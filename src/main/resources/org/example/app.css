@@ -1,0 +1,172 @@
+.root {
+    -fx-font-family: "Segoe UI";
+    -fx-background-color: #f4f7fb;
+}
+
+/* Obere blaue Leiste */
+
+.top-bar {
+    -fx-background-color: #124e78;
+    -fx-padding: 18 28 18 28;
+}
+
+.app-title {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+/* Hauptbereich */
+
+.content {
+    -fx-padding: 28;
+    -fx-spacing: 20;
+}
+
+.page-title {
+    -fx-text-fill: #16324f;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+.page-description {
+    -fx-text-fill: #687b8e;
+    -fx-font-size: 13px;
+}
+
+/* Weiße Inhaltskarte */
+
+.content-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #dbe5ef;
+    -fx-border-radius: 12;
+    -fx-padding: 20;
+}
+
+/* Schaltflächen */
+
+.primary-button {
+    -fx-background-color: #1976b9;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 7;
+    -fx-padding: 10 18;
+    -fx-cursor: hand;
+}
+
+.primary-button:hover {
+    -fx-background-color: #125f96;
+}
+
+/* Tabelle */
+
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: #dbe5ef;
+    -fx-border-radius: 7;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #edf4fa;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-padding: 10;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #284a68;
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+}
+
+.table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: transparent transparent #edf1f5 transparent;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: #f1f7fc;
+}
+
+.table-row-cell:selected {
+    -fx-background-color:  #9fc7e5;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: black;
+}
+.navigation {
+    -fx-background-color: #ffffff;
+    -fx-padding: 20 12;
+    -fx-pref-width: 175;
+    -fx-border-color: transparent #dbe5ef transparent transparent;
+}
+
+.navigation .button {
+    -fx-pref-width: 150;
+    -fx-alignment: center-left;
+    -fx-background-color: transparent;
+    -fx-text-fill: #284a68;
+    -fx-padding: 11 14;
+    -fx-background-radius: 7;
+    -fx-cursor: hand;
+}
+
+.navigation .button:hover {
+    -fx-background-color: #edf4fa;
+}
+
+.navigation .button.active {
+    -fx-background-color: #d8ebfa;
+    -fx-text-fill: #124e78;
+    -fx-font-weight: bold;
+}
+.detail-card {
+    -fx-background-color: white;
+    -fx-border-color: #d9d9d9;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 15;
+    -fx-spacing: 8;
+}
+
+.detail-card .label:first-child {
+    -fx-font-weight: bold;
+}
+.details-pane {
+    -fx-background-color: #f7faff;
+    -fx-border-color: #dce6f2;
+    -fx-border-width: 0 0 0 1;
+    -fx-padding: 20;
+    -fx-spacing: 18;
+}
+
+.details-project-name {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #173b63;
+}
+
+.detail-card-title {
+    -fx-font-weight: bold;
+    -fx-text-fill: #173b63;
+}
+
+.details-close-button {
+    -fx-background-color: transparent;
+    -fx-font-size: 22px;
+    -fx-cursor: hand;
+}
+
+.details-scroll,
+.details-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.details-scroll {
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}

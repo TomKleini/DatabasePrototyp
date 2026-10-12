@@ -67,8 +67,16 @@ public class Main extends Application {
         Button kpiButton = new Button("Kalkulation");
         Button powerBiButton = new Button("Power BI");
 
-        // Diese Ansichten kommen später.
-        kpiButton.setDisable(true);
+        KalkulationView kalkulationView =
+        new KalkulationView(new KpiRepository());
+
+        kpiButton.setOnAction(event -> {
+            kalkulationView.reload();
+            root.setCenter(kalkulationView);
+            root.setRight(null);
+        });
+
+        // Power BI kommt später.
         powerBiButton.setDisable(true);
 
         VBox navigation = new VBox(

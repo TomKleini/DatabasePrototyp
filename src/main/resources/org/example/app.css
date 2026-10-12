@@ -170,3 +170,17 @@
     -fx-background-insets: 0;
     -fx-padding: 0;
 }
+.kalkulation-scroll,
+.kalkulation-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.section-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.hint {
+    -fx-text-fill: #6b7280;
+    -fx-font-size: 11px;
+}

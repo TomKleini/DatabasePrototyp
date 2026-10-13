@@ -133,6 +133,10 @@ public class KalkulationView extends ScrollPane {
             new TableView<>();
     private final TableView<LightingKpiRow> dataTable = new TableView<>();
 
+    private final RechenwegCard rechenweg = new RechenwegCard();
+    private final KorrelationsMatrixCard matrix = new KorrelationsMatrixCard();
+    private final KombiSchaetzungCard kombi = new KombiSchaetzungCard();
+
     public KalkulationView(KpiRepository repository) {
         this.repository = repository;
 
@@ -186,7 +190,11 @@ public class KalkulationView extends ScrollPane {
                 buildEstimateCard(),
                 buildKpiCard(),
                 buildCorrelationCard(),
+                card("Rechenweg: Brennstellen aus Fläche", rechenweg),
+                card("Korrelationsmatrix", matrix),
+                card("Kombinierte Schätzung Brennstellen", kombi),
                 buildDataCard()
+                
         );
         content.getStyleClass().add("content");
 
@@ -213,6 +221,7 @@ public class KalkulationView extends ScrollPane {
         categoryFilter.setValue(
                 categories.contains(previous) ? previous : ALL_CATEGORIES
         );
+        
         updatingFilters = false;
 
         updateShipTypeOptions();
@@ -267,6 +276,18 @@ public class KalkulationView extends ScrollPane {
         updateKpis();
         updateCorrelations();
         calculate();
+        rechenweg.setDaten(rows);
+        matrix.setFilter(
+        ALL_CATEGORIES.equals(categoryFilter.getValue()) ? null : categoryFilter.getValue(),
+        ALL_SHIP_TYPES.equals(shipTypeFilter.getValue()) ? null : shipTypeFilter.getValue(),
+        onlyRelevant.isSelected()
+        );
+
+        kombi.setFilter(
+        ALL_CATEGORIES.equals(categoryFilter.getValue()) ? null : categoryFilter.getValue(),
+        ALL_SHIP_TYPES.equals(shipTypeFilter.getValue()) ? null : shipTypeFilter.getValue(),
+        onlyRelevant.isSelected()
+        );
     }
 
     // ------------------------------------------------------------------
@@ -378,6 +399,8 @@ public class KalkulationView extends ScrollPane {
         addColumn(dataTable, "Werft", LightingKpiRow::shipyard);
         addColumn(dataTable, "Schiffstyp", LightingKpiRow::shipType);
         addColumn(dataTable, "Status", LightingKpiRow::status);
+        addColumn(dataTable, "Volumen (GT)", row -> format(row.volumeGt()));
+        addColumn(dataTable, "Fläche (m²)", row -> format(row.areaSqm()));
         addColumn(dataTable, "Brennst. Soll",
                 row -> format(row.lightingPointsTarget()));
         addColumn(dataTable, "Brennst. Ist",

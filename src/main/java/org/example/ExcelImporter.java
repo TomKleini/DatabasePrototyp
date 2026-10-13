@@ -707,8 +707,11 @@ public final class ExcelImporter {
 
         if (normalized.contains(",")) {
             normalized = normalized.replace(".", "").replace(',', '.');
+        } else if (normalized.matches("[-+]?[1-9]\\d{0,2}(?:\\.\\d{3})+")) {
+            // "3.400" oder "11.845": Punkt ist Tausendertrennzeichen
+            normalized = normalized.replace(".", "");
         }
-
+        
         try {
             return Double.parseDouble(normalized);
         } catch (NumberFormatException exception) {
@@ -790,19 +793,26 @@ public final class ExcelImporter {
         return new Double[]{target, actual};
     }
 
-    private static Double parsePlainNumber(String text) {
+        private static Double parsePlainNumber(String text) {
         if (text == null) {
             return null;
         }
 
-        String normalized = text.trim();
+        String normalized = text.trim().replace(" ", "");
 
-        if (!normalized.matches("[-+]?\\d+(?:[.,]\\d+)?")) {
+        if (!normalized.matches("[-+]?\\d{1,3}(?:\\.\\d{3})*(?:,\\d+)?"
+                + "|[-+]?\\d+(?:[.,]\\d+)?")) {
             return null;
         }
 
+        if (normalized.contains(",")) {
+            normalized = normalized.replace(".", "").replace(',', '.');
+        } else if (normalized.matches("[-+]?[1-9]\\d{0,2}(?:\\.\\d{3})+")) {
+            normalized = normalized.replace(".", "");
+        }
+
         try {
-            return Double.parseDouble(normalized.replace(',', '.'));
+            return Double.parseDouble(normalized);
         } catch (NumberFormatException exception) {
             return null;
         }

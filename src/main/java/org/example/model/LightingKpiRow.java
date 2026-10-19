@@ -1,4 +1,4 @@
-package org.example;
+package org.example.model;
 
 /**
  * Ein Projekt mit seinen Beleuchtungskennzahlen (Soll/Ist)

@@ -1,4 +1,4 @@
-package org.example;
+package org.example.ui.project;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -15,10 +15,13 @@ import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseButton;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
+import org.example.ui.common.TableAutoSize;
+import org.example.model.Project;
+import org.example.repository.ProjectRepository;
 
 import java.util.List;
 import java.util.Locale;
@@ -31,6 +34,10 @@ public class ProjectOverviewView extends VBox {
 
     private final TableView<Project> projectTable = new TableView<>();
     private Consumer<Project> onProjectOpen = project -> {};
+    private Consumer<Project> onProjectEdit = project -> {};
+    private final ComboBox<String> categoryFilter = new ComboBox<>();
+    private final TextField searchField = new TextField();
+    private final Label feedback = new Label();
     private Runnable onNewProject = () -> {};
     private final ProjectRepository repository;
     private final ObservableList<Project> allProjects =
@@ -58,10 +65,16 @@ public class ProjectOverviewView extends VBox {
         newProjectButton.getStyleClass().add("primary-button");
         newProjectButton.setOnAction(event -> onNewProject.run());
 
-        HBox buttons = new HBox(10, detailsButton, newProjectButton);
-        HBox header = new HBox(20, heading, buttons);
-        header.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(heading, Priority.ALWAYS);
+        Button editButton = new Button("Projekt bearbeiten");
+        editButton.setId("overview-edit");
+        editButton.setOnAction(event -> {
+            Project selected = projectTable.getSelectionModel().getSelectedItem();
+            if (selected != null) onProjectEdit.accept(selected);
+        });
+        editButton.disableProperty().bind(projectTable.getSelectionModel().selectedItemProperty().isNull());
+        detailsButton.disableProperty().bind(projectTable.getSelectionModel().selectedItemProperty().isNull());
+        FlowPane buttons = new FlowPane(10, 10, detailsButton, editButton, newProjectButton);
+        VBox header = new VBox(12, heading, buttons);
 
         addColumn("Schiffsname", Project::getShipName);
         addColumn("Werft", Project::getShipyard);
@@ -87,7 +100,6 @@ public class ProjectOverviewView extends VBox {
         // danach frei per Maus verstellbar.
         TableAutoSize.autoSize(projectTable, allProjects);
 
-        ComboBox<String> categoryFilter = new ComboBox<>();
         categoryFilter.setPrefWidth(210);
         categoryFilter.getItems().add(ALL_CATEGORIES);
 
@@ -102,7 +114,6 @@ public class ProjectOverviewView extends VBox {
 
         categoryFilter.setValue(ALL_CATEGORIES);
 
-        TextField searchField = new TextField();
         searchField.setPromptText(
                 "Schiff, Werft, Typ oder Status suchen ..."
         );
@@ -127,8 +138,8 @@ public class ProjectOverviewView extends VBox {
                         )
         );
 
-        HBox filters = new HBox(
-                10,
+        FlowPane filters = new FlowPane(
+                10, 10,
                 new Label("Kategorie:"),
                 categoryFilter,
                 searchField
@@ -155,7 +166,10 @@ public class ProjectOverviewView extends VBox {
         VBox.setVgrow(projectTable, Priority.ALWAYS);
         VBox.setVgrow(tableCard, Priority.ALWAYS);
 
-        getChildren().addAll(header, filters, tableCard);
+        feedback.setWrapText(true);
+        feedback.setManaged(false);
+        feedback.setVisible(false);
+        getChildren().addAll(header, filters, feedback, tableCard);
     }
 
     private void updateFilter(
@@ -253,8 +267,37 @@ public class ProjectOverviewView extends VBox {
         this.onNewProject = onNewProject;
     }
 
+    public void setOnProjectEdit(Consumer<Project> onProjectEdit) {
+        this.onProjectEdit = onProjectEdit;
+    }
+
     public void reloadProjects() {
-        allProjects.setAll(repository.findAll());
+        List<Project> loaded = repository.findAll();
+        String selectedCategory = categoryFilter.getValue();
+        allProjects.setAll(loaded);
+        categoryFilter.getItems().setAll(ALL_CATEGORIES);
+        loaded.stream().map(Project::getCategory)
+                .filter(c -> c != null && !c.isBlank()).distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER).forEach(categoryFilter.getItems()::add);
+        categoryFilter.setValue(categoryFilter.getItems().contains(selectedCategory)
+                ? selectedCategory : ALL_CATEGORIES);
         TableAutoSize.autoSize(projectTable, allProjects);
+    }
+
+    /** Macht das gespeicherte Projekt auch nach einer Namens-/Kategorieänderung sichtbar. */
+    public Project showSavedProject(int id) {
+        Project saved = allProjects.stream().filter(p -> p.getId() == id).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Gespeichertes Projekt wurde nicht geladen."));
+        boolean filtersReset = !projectTable.getItems().contains(saved);
+        if (filtersReset) {
+            categoryFilter.setValue(ALL_CATEGORIES);
+            searchField.clear();
+        }
+        projectTable.getSelectionModel().select(saved);
+        projectTable.scrollTo(saved);
+        feedback.setText("Änderungen gespeichert." + (filtersReset
+                ? " Die Filter wurden zurückgesetzt, damit das Projekt sichtbar ist." : ""));
+        feedback.setVisible(true); feedback.setManaged(true);
+        return saved;
     }
 }

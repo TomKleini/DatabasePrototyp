@@ -1,4 +1,4 @@
-package org.example;
+package org.example.ui.calculation;
 
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Pos;
@@ -18,6 +18,10 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import org.example.ui.common.TableAutoSize;
+import org.example.calculation.KpiStatistics;
+import org.example.model.LightingKpiRow;
+import org.example.repository.KpiRepository;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;

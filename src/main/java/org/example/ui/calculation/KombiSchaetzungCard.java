@@ -1,4 +1,4 @@
-package org.example;
+package org.example.ui.calculation;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -25,6 +25,9 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import org.example.calculation.RegressionRechenweg;
+import org.example.model.MatrixProjekt;
+import org.example.repository.MatrixRepository;
 
 /**
  * Kombinierte Schätzung der Brennstellen aus mehreren Bezugsgrößen.

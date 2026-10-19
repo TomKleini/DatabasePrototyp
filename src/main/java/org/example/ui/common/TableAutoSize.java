@@ -1,4 +1,4 @@
-package org.example;
+package org.example.ui.common;
 
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;

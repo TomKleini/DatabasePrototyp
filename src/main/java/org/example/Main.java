@@ -4,11 +4,21 @@ import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import org.example.database.Database;
+import org.example.model.Project;
+import org.example.repository.KpiRepository;
+import org.example.repository.ProjectRepository;
+import org.example.ui.calculation.KalkulationView;
+import org.example.ui.project.ProjectDetailsView;
+import org.example.ui.project.ProjectEditView;
+import org.example.ui.project.ProjectFormView;
+import org.example.ui.project.ProjectOverviewView;
 
 import java.util.Objects;
 
@@ -58,8 +68,39 @@ public class Main extends Application {
 
         detailsView.setOnClose(() -> root.setRight(null));
 
+        java.util.function.Consumer<Project> editProject = project -> {
+            try {
+                ProjectEditView editView = new ProjectEditView(repository, project.getId());
+                editView.setOnCancel(() -> {
+                    root.setCenter(overviewView);
+                    detailsView.showProject(project);
+                    root.setRight(detailsView);
+                });
+                editView.setOnSaved(id -> {
+                    root.setCenter(overviewView);
+                    root.setRight(null);
+                    try {
+                        overviewView.reloadProjects();
+                        Project saved = overviewView.showSavedProject(id);
+                        detailsView.showProject(saved);
+                        root.setRight(detailsView);
+                    } catch (RuntimeException e) {
+                        showError(stage, "Projekt gespeichert", "Die Änderungen sind gespeichert. "
+                                + "Die Übersicht konnte jedoch nicht neu geladen werden.", e);
+                    }
+                });
+                root.setRight(null);
+                root.setCenter(editView);
+            } catch (RuntimeException e) {
+                showError(stage, "Bearbeiten nicht möglich", "Das Projekt konnte nicht geladen werden.", e);
+            }
+        };
+        overviewView.setOnProjectEdit(editProject);
+        detailsView.setOnProjectEdit(editProject);
+
         Button overviewButton = new Button("Projekte");
         overviewButton.setOnAction(event -> {
+            if (!allowNavigation(root)) return;
             root.setCenter(overviewView);
             root.setRight(null);
         });
@@ -68,9 +109,10 @@ public class Main extends Application {
         Button powerBiButton = new Button("Power BI");
 
         KalkulationView kalkulationView =
-        new KalkulationView(new KpiRepository());
+                new KalkulationView(new KpiRepository());
 
         kpiButton.setOnAction(event -> {
+            if (!allowNavigation(root)) return;
             kalkulationView.reload();
             root.setCenter(kalkulationView);
             root.setRight(null);
@@ -103,7 +145,25 @@ public class Main extends Application {
         stage.setScene(scene);
         stage.setMinWidth(950);
         stage.setMinHeight(500);
+        stage.setOnCloseRequest(event -> {
+            if (!allowNavigation(root)) event.consume();
+        });
         stage.show();
+    }
+
+    private boolean allowNavigation(BorderPane root) {
+        return !(root.getCenter() instanceof ProjectEditView editView)
+                || editView.confirmDiscardChanges();
+    }
+
+    private void showError(Stage owner, String title, String message, RuntimeException error) {
+        error.printStackTrace();
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.initOwner(owner);
+        alert.setTitle(title);
+        alert.setHeaderText(message);
+        alert.setContentText(error.getMessage() == null ? "Bitte die Konsolenausgabe prüfen." : error.getMessage());
+        alert.showAndWait();
     }
 
     public static void main(String[] args) {

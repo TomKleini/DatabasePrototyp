@@ -1,4 +1,7 @@
-package org.example;
+package org.example.repository;
+
+import org.example.database.Database;
+import org.example.model.MatrixProjekt;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

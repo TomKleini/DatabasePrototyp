@@ -1,4 +1,7 @@
-package org.example;
+package org.example.repository;
+
+import org.example.database.Database;
+import org.example.model.LightingKpiRow;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

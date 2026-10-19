@@ -1,4 +1,4 @@
-package org.example;
+package org.example.ui.project;
 
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -7,6 +7,9 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import org.example.model.Project;
+
+import java.util.function.Consumer;
 
 public class ProjectDetailsView extends VBox {
 
@@ -28,6 +31,9 @@ public class ProjectDetailsView extends VBox {
     private final Label cableActualLabel = new Label();
 
     private Runnable onClose = () -> {};
+    private Consumer<Project> onProjectEdit = project -> {};
+    private Project currentProject;
+    private final Button editButton = new Button("Projekt bearbeiten");
 
     public ProjectDetailsView() {
         getStyleClass().add("details-pane");
@@ -46,6 +52,9 @@ public class ProjectDetailsView extends VBox {
         HBox.setHgrow(title, Priority.ALWAYS);
 
         projectNameLabel.getStyleClass().add("details-project-name");
+        editButton.setDisable(true);
+        editButton.getStyleClass().add("primary-button");
+        editButton.setOnAction(e -> { if (currentProject != null) onProjectEdit.accept(currentProject); });
 
         VBox technicalCard = createCard(
                 "Technische Daten",
@@ -67,6 +76,7 @@ public class ProjectDetailsView extends VBox {
         VBox body = new VBox(
                 16,
                 projectNameLabel,
+                editButton,
                 technicalCard,
                 scheduleCard,
                 cableCard
@@ -93,6 +103,8 @@ public class ProjectDetailsView extends VBox {
     }
 
     public void showProject(Project project) {
+        currentProject = project;
+        editButton.setDisable(false);
         projectNameLabel.setText(text(project.getShipName()));
 
         lengthLabel.setText(
@@ -142,6 +154,10 @@ public class ProjectDetailsView extends VBox {
 
     public void setOnClose(Runnable onClose) {
         this.onClose = onClose;
+    }
+
+    public void setOnProjectEdit(Consumer<Project> onProjectEdit) {
+        this.onProjectEdit = onProjectEdit;
     }
 
     private String text(String value) {

@@ -267,4 +267,44 @@
     }
 
 
+    /* Schritt 3: unten an die bestehende app.css anhängen. */
+    .project-edit-tabs {
+        -fx-open-tab-animation: NONE;
+        -fx-close-tab-animation: NONE;
+    }
+    .project-edit-tabs > .tab-header-area > .tab-header-background {
+        -fx-background-color: transparent;
+    }
+    .project-edit-tabs > .tab-header-area > .headers-region > .tab {
+        -fx-background-color: #e8eff6;
+        -fx-background-radius: 8 8 0 0;
+        -fx-padding: 9 14;
+    }
+    .project-edit-tabs > .tab-header-area > .headers-region > .tab:selected {
+        -fx-background-color: #1976b9;
+    }
+    .project-edit-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+        -fx-text-fill: white;
+    }
+    .project-edit-scroll,
+    .project-edit-scroll > .viewport,
+    .project-edit-body {
+        -fx-background-color: white;
+    }
+    .project-edit-scroll {
+        -fx-border-color: #dbe5ef;
+        -fx-border-radius: 0 8 8 8;
+        -fx-background-insets: 0;
+        -fx-padding: 0;
+    }
+    .project-edit .text-field,
+    .project-edit .combo-box,
+    .project-edit .date-picker {
+        -fx-pref-height: 34;
+    }
+    .project-edit-error {
+        -fx-text-fill: #b42318;
+        -fx-font-size: 12px;
+    }
+
 }

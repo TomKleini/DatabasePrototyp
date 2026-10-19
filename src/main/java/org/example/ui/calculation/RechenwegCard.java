@@ -1,4 +1,4 @@
-package org.example;
+package org.example.ui.calculation;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -27,6 +27,8 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
+import org.example.calculation.RegressionRechenweg;
+import org.example.model.LightingKpiRow;
 
 /**
  * Rechenweg "Brennstellen aus Fläche": zeigt jede Zwischengröße mit den

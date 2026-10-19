@@ -84,6 +84,11 @@ public class RechenwegCard extends VBox {
             String formel,
             String kalkulation,
             Double mape,
+            Double mdape,
+            Double mae,
+            Double maxAbsolut,
+            Double maxProzent,
+            String pruefumfang,
             String bewertung,
             boolean beste
     ) {
@@ -294,7 +299,12 @@ public class RechenwegCard extends VBox {
                 textSpalte("Methode", MethodenZeile::methode, 200),
                 textSpalte("Formel", MethodenZeile::formel, 110),
                 textSpalte("Mit euren Werten", MethodenZeile::kalkulation, 330),
-                zahlSpalte("Prognosefehler %", MethodenZeile::mape, ZAHL),
+                zahlSpalte("MAPE (%)", MethodenZeile::mape, ZAHL),
+                zahlSpalte("MdAPE (%)", MethodenZeile::mdape, ZAHL),
+                zahlSpalte("MAE (Brennstellen)", MethodenZeile::mae, ZAHL),
+                zahlSpalte("Max. Fehler (Brennstellen)", MethodenZeile::maxAbsolut, ZAHL),
+                zahlSpalte("Max. Fehler (%)", MethodenZeile::maxProzent, ZAHL),
+                textSpalte("LOO-Prüfumfang", MethodenZeile::pruefumfang, 300),
                 textSpalte("Bewertung", MethodenZeile::bewertung, 220)
         ));
         methodenTabelle.setRowFactory(tabelle -> fettWenn(MethodenZeile::beste));
@@ -311,8 +321,13 @@ public class RechenwegCard extends VBox {
                         ? "Brennstellen = " + g(m.b()) + " × Fläche"
                         : "Brennstellen = " + z(m.a()) + " + " + g(m.b()) + " × Fläche";
                 boolean istBeste = m == beste;
+                RegressionRechenweg.Fehlerkennzahlen f = m.fehlerkennzahlen();
                 zeilen.add(new MethodenZeile(m.name(), m.formel(), formel,
-                        m.mape(), istBeste ? "kleinster Fehler, empfohlen" : "",
+                        f.mape(), f.mdape(), f.mae(), f.maxAbsolut(), f.maxProzent(),
+                        f.nAbsolut() + "/" + f.nGesamt() + " absolut; "
+                                + f.nProzent() + " prozentual; "
+                                + f.nichtBerechenbar() + " nicht berechenbar",
+                        istBeste ? "kleinster MAPE im Vergleich" : "",
                         istBeste));
             }
         }
@@ -323,13 +338,18 @@ public class RechenwegCard extends VBox {
         if (ergebnis == null) {
             methodenFazit.setText("");
         } else if (beste == null) {
-            methodenFazit.setText("Der Prognosefehler lässt sich erst ab 3 Schiffen "
-                    + "berechnen. Bis dahin ist keine Empfehlung möglich.");
+            methodenFazit.setText("Keine Auswahl nach MAPE möglich: mindestens 3 Schiffe "
+                    + "und berechenbare LOO-Prognosen mit Referenzwert ungleich 0 sind nötig. "
+                    + "Vorhandene absolute Fehler bleiben in der Tabelle sichtbar.");
         } else {
-            methodenFazit.setText("Prognosefehler = mittlere Abweichung, wenn jedes "
-                    + "Schiff einmal weggelassen und mit den übrigen geschätzt wird "
-                    + "(Details in Abschnitt 9). Die Methode mit dem kleinsten Fehler "
-                    + "hätte die bisherigen Schiffe am besten vorhergesagt.");
+            methodenFazit.setText("Alle Fehler beruhen auf Leave-one-out-Prognosen "
+                    + "(Details in Abschnitt 9). MAPE = mittlerer absoluter Prozentfehler; "
+                    + "MdAPE = Median der absoluten Prozentfehler; MAE = mittlerer "
+                    + "absoluter Fehler in Brennstellen; Max. = größte einzelne Abweichung. "
+                    + "Referenzwert 0 zählt nur für absolute Fehler. Leere Felder bedeuten "
+                    + "nicht berechenbar, nicht Fehler 0. Auswahl weiterhin nach kleinstem MAPE; "
+                    + "bei unterschiedlichem Prüfumfang nur eingeschränkt vergleichbar. "
+                    + "Die Kennzahlen sind keine Prognoseintervalle oder Genauigkeitsgarantie.");
         }
     }
 
@@ -609,9 +629,27 @@ public class RechenwegCard extends VBox {
             }
 
             if (e.mape() != null) {
-                s.add(new Schritt("Prognosefehler", "Ø |Prognose − Ist| / Ist",
+                s.add(new Schritt("MAPE (normale Regression)", "Ø |Prognose − Referenz| / |Referenz| × 100",
                         "Mittel der Beträge in Abschnitt 9",
                         z(e.mape()) + " %", ""));
+            }
+            RegressionRechenweg.Fehlerkennzahlen f =
+                    RegressionRechenweg.fehlerkennzahlen(e.loo());
+            if (f.mae() != null) {
+                s.add(new Schritt("MAE (normale Regression)", "Ø |Prognose − Referenz|",
+                        f.nAbsolut() + " berechenbare LOO-Prognosen",
+                        z(f.mae()) + " Brennstellen", ""));
+                s.add(new Schritt("Größter absoluter Fehler", "max |Prognose − Referenz|",
+                        "Größte Einzelabweichung in Abschnitt 9",
+                        z(f.maxAbsolut()) + " Brennstellen", ""));
+            }
+            if (f.mdape() != null) {
+                s.add(new Schritt("MdAPE (normale Regression)", "Median der absoluten Prozentfehler",
+                        f.nProzent() + " Referenzwerte ungleich 0",
+                        z(f.mdape()) + " %", ""));
+                s.add(new Schritt("Größter Prozentfehler", "max |Prognose − Referenz| / |Referenz| × 100",
+                        "Größte prozentuale Einzelabweichung in Abschnitt 9",
+                        z(f.maxProzent()) + " %", ""));
             }
         }
 
@@ -718,13 +756,16 @@ public class RechenwegCard extends VBox {
         looTabelle.getColumns().setAll(List.of(
                 textSpalte("Schiff (weggelassen)", LooVergleich::schiff, 180),
                 zahlSpalte("Fläche (m²)", LooVergleich::x, ZAHL),
-                zahlSpalte("Ist-Brennstellen", LooVergleich::ist, ZAHL),
+                zahlSpalte("Referenz-Brennstellen", LooVergleich::ist, ZAHL),
                 zahlSpalte("Prognose normal", LooVergleich::prognoseNormal, ZAHL),
-                zahlSpalte("Fehler % normal", LooVergleich::fehlerNormal, ZAHL),
+                zahlSpalte("Fehler absolut normal", z -> absoluterFehler(z.prognoseNormal(), z.ist()), ZAHL),
+                zahlSpalte("Abw. % normal (+/−)", LooVergleich::fehlerNormal, ZAHL),
                 zahlSpalte("Prognose Theil-Sen", LooVergleich::prognoseTs, ZAHL),
-                zahlSpalte("Fehler % Theil-Sen", LooVergleich::fehlerTs, ZAHL),
+                zahlSpalte("Fehler absolut Theil-Sen", z -> absoluterFehler(z.prognoseTs(), z.ist()), ZAHL),
+                zahlSpalte("Abw. % Theil-Sen (+/−)", LooVergleich::fehlerTs, ZAHL),
                 zahlSpalte("Prognose Median-Quote", LooVergleich::prognoseQuote, ZAHL),
-                zahlSpalte("Fehler % Median-Quote", LooVergleich::fehlerQuote, ZAHL)
+                zahlSpalte("Fehler absolut Median-Quote", z -> absoluterFehler(z.prognoseQuote(), z.ist()), ZAHL),
+                zahlSpalte("Abw. % Median-Quote (+/−)", LooVergleich::fehlerQuote, ZAHL)
         ));
         looTabelle.setPlaceholder(new Label("Ab 3 Schiffen verfügbar."));
     }
@@ -750,6 +791,14 @@ public class RechenwegCard extends VBox {
 
         looTabelle.getItems().setAll(zeilen);
         passeHoeheAn(looTabelle, 0);
+    }
+
+    private static Double absoluterFehler(Double prognose, double referenz) {
+        if (prognose == null || !Double.isFinite(prognose) || !Double.isFinite(referenz)) {
+            return null;
+        }
+        double fehler = Math.abs(prognose - referenz);
+        return Double.isFinite(fehler) ? fehler : null;
     }
 
     // ------------------------------------------------------------------

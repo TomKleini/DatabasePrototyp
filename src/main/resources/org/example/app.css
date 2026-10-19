@@ -183,4 +183,88 @@
 .hint {
     -fx-text-fill: #6b7280;
     -fx-font-size: 11px;
+
+
+    /* Kalkulation: feste Filter und getrennte Arbeitsbereiche */
+    .calculation-content {
+        -fx-spacing: 14;
+        -fx-padding: 22 24 18 24;
+    }
+
+    .calculation-filter-card {
+        -fx-background-color: white;
+        -fx-background-radius: 10;
+        -fx-border-color: #dbe5ef;
+        -fx-border-radius: 10;
+        -fx-padding: 12 16;
+    }
+
+    .calculation-refresh-button {
+        -fx-background-color: #edf4fa;
+        -fx-text-fill: #124e78;
+        -fx-background-radius: 7;
+        -fx-padding: 8 14;
+        -fx-font-weight: bold;
+        -fx-cursor: hand;
+    }
+
+    .calculation-refresh-button:hover {
+        -fx-background-color: #d8ebfa;
+    }
+
+    .calculation-tabs {
+        -fx-tab-min-height: 36;
+        -fx-open-tab-animation: NONE;
+        -fx-close-tab-animation: NONE;
+    }
+
+    .calculation-tabs > .tab-header-area {
+        -fx-padding: 0 0 8 0;
+    }
+
+    .calculation-tabs > .tab-header-area > .tab-header-background {
+        -fx-background-color: transparent;
+    }
+
+    .calculation-tabs > .tab-header-area > .headers-region > .tab {
+        -fx-background-color: #e8eff6;
+        -fx-background-radius: 8 8 0 0;
+        -fx-padding: 8 15;
+    }
+
+    .calculation-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+        -fx-text-fill: #45627d;
+        -fx-font-size: 12px;
+        -fx-font-weight: bold;
+    }
+
+    .calculation-tabs > .tab-header-area > .headers-region > .tab:selected {
+        -fx-background-color: #1976b9;
+    }
+
+    .calculation-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+        -fx-text-fill: white;
+    }
+
+    .calculation-tab-scroll,
+    .calculation-tab-scroll > .viewport {
+        -fx-background-color: transparent;
+    }
+
+    .calculation-tab-scroll {
+        -fx-padding: 0;
+        -fx-background-insets: 0;
+    }
+
+    .calculation-tab-body {
+        -fx-padding: 8 10 16 0;
+    }
+
+    .calculation-tab-intro {
+        -fx-text-fill: #526b82;
+        -fx-font-size: 12px;
+        -fx-padding: 0 2 4 2;
+    }
+
+
 }

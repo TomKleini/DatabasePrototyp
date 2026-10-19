@@ -8,11 +8,15 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.text.NumberFormat;
@@ -23,11 +27,8 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
- * Kalkulation Beleuchtung:
- * 1. Aufwandsschätzung aus Brennstellen / IOs
- * 2. Kennzahlen (Median, Spanne, Soll/Ist-Faktor)
- * 3. Zusammenhänge (Regression, Pearson r)
- * 4. Datengrundlage pro Projekt
+ * Kalkulation Beleuchtung mit gemeinsamen Filtern und fünf Reitern.
+ * Vorhandene Karten werden einmal erstellt und beim Wechsel beibehalten.
  */
 public class KalkulationView extends ScrollPane {
 
@@ -141,6 +142,9 @@ public class KalkulationView extends ScrollPane {
         this.repository = repository;
 
         setFitToWidth(true);
+        setFitToHeight(true);
+        setHbarPolicy(ScrollBarPolicy.NEVER);
+        setVbarPolicy(ScrollBarPolicy.NEVER);
         getStyleClass().add("kalkulation-scroll");
 
         Label pageTitle = new Label("Kalkulation Beleuchtung");
@@ -151,6 +155,7 @@ public class KalkulationView extends ScrollPane {
                         + "Aufwandsschätzung für neue Projekte"
         );
         description.getStyleClass().add("page-description");
+        description.setWrapText(true);
 
         VBox heading = new VBox(4, pageTitle, description);
 
@@ -172,31 +177,71 @@ public class KalkulationView extends ScrollPane {
         onlyRelevant.setSelected(true);
         onlyRelevant.setOnAction(event -> reload());
 
-        HBox filters = new HBox(
-                10,
-                new Label("Kategorie:"),
-                categoryFilter,
-                new Label("Schiffstyp:"),
-                shipTypeFilter,
-                onlyRelevant,
-                projectCount
-        );
+        Button refreshButton = new Button("Aktualisieren");
+        refreshButton.getStyleClass().add("calculation-refresh-button");
+        refreshButton.setOnAction(event -> reload());
+
+        HBox categoryGroup = new HBox(8, new Label("Kategorie:"), categoryFilter);
+        categoryGroup.setAlignment(Pos.CENTER_LEFT);
+        HBox shipTypeGroup = new HBox(8, new Label("Schiffstyp:"), shipTypeFilter);
+        shipTypeGroup.setAlignment(Pos.CENTER_LEFT);
+
+        FlowPane filters = new FlowPane(16, 10, categoryGroup, shipTypeGroup,
+                onlyRelevant, refreshButton);
         filters.setAlignment(Pos.CENTER_LEFT);
+        filters.getStyleClass().add("calculation-filter-controls");
+
+        projectCount.setWrapText(true);
+        projectCount.getStyleClass().add("hint");
+        Label filterHint = new Label("Die Filter gelten für alle Reiter. "
+                + "Je nach benötigten Werten können die Karten unterschiedlich viele Projekte verwenden.");
+        filterHint.setWrapText(true);
+        filterHint.getStyleClass().add("hint");
+
+        VBox filterCard = new VBox(8, filters, projectCount, filterHint);
+        filterCard.getStyleClass().add("calculation-filter-card");
+
+        TabPane tabs = new TabPane();
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabs.getStyleClass().add("calculation-tabs");
+        tabs.setMinWidth(0);
+        tabs.setMinHeight(0);
+        tabs.getTabs().addAll(
+                calculationTab("Schätzung",
+                        "Mengen aus Schiffsgrößen schätzen und anschließend den Aufwand aus Mengen berechnen. "
+                                + "Die Brennstellen aus der kombinierten Schätzung werden derzeit noch nicht automatisch "
+                                + "in die Aufwandsschätzung übernommen; bitte bei Bedarf unten eintragen.",
+                        card("Brennstellen schätzen und ähnliche Schiffe vergleichen", kombi),
+                        buildEstimateCard()),
+                calculationTab("Kennzahlen",
+                        "Historische Soll- und Istwerte mit Median, Quartilen und Soll/Ist-Verhältnis vergleichen.",
+                        buildKpiCard()),
+                calculationTab("Zusammenhänge",
+                        "Zusammenhänge untersuchen: Die Matrix zeigt Spearman, die Übersicht einfache lineare Regressionen. "
+                                + "Ein Klick in der Matrix öffnet die Details mit den Fehlerkennzahlen.",
+                        card("Korrelationsmatrix", matrix),
+                        buildCorrelationCard()),
+                calculationTab("Rechenweg",
+                        "Die Brennstellenschätzung aus Fläche Schritt für Schritt nachvollziehen: "
+                                + "Methodenvergleich, Diagramm, Probe-Rechnung und Leave-one-out-Prüfung.",
+                        card("Rechenweg: Brennstellen aus Fläche", rechenweg)),
+                calculationTab("Datengrundlage",
+                        "Die geladenen Projekte und ihre Beleuchtungs- und IO-Kennzahlen prüfen. "
+                                + "Angezeigt werden Projekte mit Beleuchtungs- oder IO-Kennzahleneinträgen.",
+                        buildDataCard())
+        );
 
         VBox content = new VBox(
                 16,
                 heading,
-                filters,
-                buildEstimateCard(),
-                buildKpiCard(),
-                buildCorrelationCard(),
-                card("Rechenweg: Brennstellen aus Fläche", rechenweg),
-                card("Korrelationsmatrix", matrix),
-                card("Kombinierte Schätzung Brennstellen", kombi),
-                buildDataCard()
-                
+                filterCard,
+                tabs
         );
         content.getStyleClass().add("content");
+        content.getStyleClass().add("calculation-content");
+        content.setMinHeight(0);
+        content.setMinWidth(0);
+        VBox.setVgrow(tabs, Priority.ALWAYS);
 
         setContent(content);
         reload();
@@ -221,7 +266,7 @@ public class KalkulationView extends ScrollPane {
         categoryFilter.setValue(
                 categories.contains(previous) ? previous : ALL_CATEGORIES
         );
-        
+
         updatingFilters = false;
 
         updateShipTypeOptions();
@@ -278,21 +323,45 @@ public class KalkulationView extends ScrollPane {
         calculate();
         rechenweg.setDaten(rows);
         matrix.setFilter(
-        ALL_CATEGORIES.equals(categoryFilter.getValue()) ? null : categoryFilter.getValue(),
-        ALL_SHIP_TYPES.equals(shipTypeFilter.getValue()) ? null : shipTypeFilter.getValue(),
-        onlyRelevant.isSelected()
+                ALL_CATEGORIES.equals(categoryFilter.getValue()) ? null : categoryFilter.getValue(),
+                ALL_SHIP_TYPES.equals(shipTypeFilter.getValue()) ? null : shipTypeFilter.getValue(),
+                onlyRelevant.isSelected()
         );
 
         kombi.setFilter(
-        ALL_CATEGORIES.equals(categoryFilter.getValue()) ? null : categoryFilter.getValue(),
-        ALL_SHIP_TYPES.equals(shipTypeFilter.getValue()) ? null : shipTypeFilter.getValue(),
-        onlyRelevant.isSelected()
+                ALL_CATEGORIES.equals(categoryFilter.getValue()) ? null : categoryFilter.getValue(),
+                ALL_SHIP_TYPES.equals(shipTypeFilter.getValue()) ? null : shipTypeFilter.getValue(),
+                onlyRelevant.isSelected()
         );
     }
 
     // ------------------------------------------------------------------
     // Aufbau der Karten
     // ------------------------------------------------------------------
+
+    /** Eigener Scrollbereich pro Reiter; globale Filter bleiben sichtbar.
+     * Die Karten werden beim Reiterwechsel nicht neu aufgebaut. Eingaben und
+     * unabhängige Basis-Auswahlen bleiben daher erhalten.
+     */
+    private Tab calculationTab(String title, String description, Node... cards) {
+        Label intro = new Label(description);
+        intro.setWrapText(true);
+        intro.getStyleClass().add("calculation-tab-intro");
+
+        VBox body = new VBox(16, intro);
+        body.getChildren().addAll(cards);
+        body.getStyleClass().add("calculation-tab-body");
+        body.setMinWidth(0);
+
+        ScrollPane scroll = new ScrollPane(body);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollBarPolicy.NEVER);
+        scroll.getStyleClass().add("calculation-tab-scroll");
+
+        Tab tab = new Tab(title, scroll);
+        tab.setClosable(false);
+        return tab;
+    }
 
     private VBox buildEstimateCard() {
         lightingPointsInput.setPromptText("z. B. 850");
@@ -351,7 +420,7 @@ public class KalkulationView extends ScrollPane {
                 line -> line.ratio().isEmpty()
                         ? "–"
                         : String.format(Locale.GERMANY, "%.2f",
-                                line.ratio().median()));
+                        line.ratio().median()));
 
         kpiTable.setPrefHeight(190);
         TableAutoSize.install(kpiTable);

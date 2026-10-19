@@ -564,16 +564,29 @@ public class KorrelationsMatrixCard extends VBox {
                             .append(m.b() < 0 ? " − " : " + ")
                             .append(GENAU.format(Math.abs(m.b()))).append(" · x");
                 }
-                if (m.mape() != null) {
-                    sb.append("   (Prognosefehler ").append(ZAHL.format(m.mape())).append(" %)");
+                RegressionRechenweg.Fehlerkennzahlen f = m.fehlerkennzahlen();
+                if (f.mae() != null) {
+                    sb.append("\n  LOO: MAPE ").append(fehlerZahl(f.mape())).append(" %, MdAPE ")
+                            .append(fehlerZahl(f.mdape())).append(" %, MAE ")
+                            .append(fehlerZahl(f.mae())).append(" [Einheit von y], max. ")
+                            .append(fehlerZahl(f.maxAbsolut())).append(" [Einheit von y] / ")
+                            .append(fehlerZahl(f.maxProzent())).append(" %; ")
+                            .append(f.nAbsolut()).append('/').append(f.nGesamt())
+                            .append(" absolut, ").append(f.nProzent()).append(" prozentual, ")
+                            .append(f.nichtBerechenbar()).append(" nicht berechenbar");
+                } else {
+                    sb.append("\n  Keine berechenbaren Leave-one-out-Prognosen.");
                 }
                 sb.append('\n');
             }
 
             RegressionRechenweg.Methode beste = e.beste();
             if (beste != null) {
-                sb.append("Kleinster Prognosefehler: ").append(beste.name()).append('.');
+                sb.append("Kleinster MAPE im Methodenvergleich: ").append(beste.name()).append('.');
             }
+            sb.append("\nAbsolute Fehler haben die Einheit der Zielgröße y. "
+                    + "Referenzwert 0 zählt nur für absolute Fehler; – bedeutet nicht verfügbar. "
+                    + "Die maximalen absoluten und prozentualen Fehler können zu verschiedenen Schiffen gehören.");
             if (paar.n() < MIN_N) {
                 sb.append("\nAchtung: weniger als ").append(MIN_N)
                         .append(" Schiffe, nur als Hinweis lesen.");
@@ -591,6 +604,10 @@ public class KorrelationsMatrixCard extends VBox {
         passeHoeheAn(detailTabelle, 12);
 
         detailBereich.getChildren().addAll(detailTitel, detailWerte, diagramm, detailTabelle);
+    }
+
+    private static String fehlerZahl(Double wert) {
+        return wert == null ? "–" : ZAHL.format(wert);
     }
 
     private void fuelleDiagramm(Paar paar) {

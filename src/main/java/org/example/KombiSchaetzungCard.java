@@ -100,6 +100,7 @@ public class KombiSchaetzungCard extends VBox {
             String methode,
             String formel,
             Double fehler,
+            RegressionRechenweg.Fehlerkennzahlen kennzahlen,
             Double eingabe,
             Double schaetzung,
             Double gewicht,
@@ -271,13 +272,13 @@ public class KombiSchaetzungCard extends VBox {
                     f.n(),
                     m == null ? "zu wenige Schiffe" : m.name(),
                     m == null ? "–" : formelText(m, f.bezug()),
-                    f.fehler(),
+                    f.fehler(), m == null ? null : m.fehlerkennzahlen(),
                     x, schaetzung, gewicht, beitrag, false));
         }
 
         if (verwendet > 0) {
             zeilen.add(new Zeile("Kombiniert", null, "", "Σ Beitrag",
-                    null, null, null, 1.0, kombiniert, true));
+                    null, null, null, null, 1.0, kombiniert, true));
         }
 
         tabelle.getItems().setAll(zeilen);
@@ -354,13 +355,16 @@ public class KombiSchaetzungCard extends VBox {
                     + "Gewicht 100 %.";
         }
 
-        double kombiSumme = 0;
-        double[] einzelSumme = new double[nutzbar.size()];
+        List<RegressionRechenweg.LooZeile> kombiLoo = new ArrayList<>();
+        List<List<RegressionRechenweg.LooZeile>> einzelLoo = new ArrayList<>();
+        for (int i = 0; i < nutzbar.size(); i++) {
+            einzelLoo.add(new ArrayList<>());
+        }
         int anzahl = 0;
 
         for (MatrixProjekt p : projekte) {
             Double y = brennstellen(p);
-            if (y == null || y == 0) {
+            if (y == null || !Double.isFinite(y)) {
                 continue;
             }
 
@@ -368,7 +372,7 @@ public class KombiSchaetzungCard extends VBox {
             boolean alle = true;
             for (int i = 0; i < nutzbar.size(); i++) {
                 Double prognose = nutzbar.get(i).looPrognosen().get(p.schiff());
-                if (prognose == null) {
+                if (prognose == null || !Double.isFinite(prognose)) {
                     alle = false;
                     break;
                 }
@@ -384,9 +388,9 @@ public class KombiSchaetzungCard extends VBox {
                 double w = roh.get(nutzbar.get(i).bezug());
                 wert += w * prognosen[i];
                 gewichtSumme += w;
-                einzelSumme[i] += Math.abs(prognosen[i] - y) / y * 100;
+                einzelLoo.get(i).add(pruefZeile(p, y, prognosen[i]));
             }
-            kombiSumme += Math.abs(wert / gewichtSumme - y) / y * 100;
+            kombiLoo.add(pruefZeile(p, y, wert / gewichtSumme));
             anzahl++;
         }
 
@@ -397,27 +401,36 @@ public class KombiSchaetzungCard extends VBox {
                     + "gewählten Bezugsgrößen. Ob die Kombination genauer ist als eine "
                     + "einzelne Bezugsgröße, lässt sich damit noch nicht fair prüfen.");
         } else {
-            double kombiFehler = kombiSumme / anzahl;
+            RegressionRechenweg.Fehlerkennzahlen kombiKennzahlen =
+                    RegressionRechenweg.fehlerkennzahlen(kombiLoo);
             int besteIndex = 0;
+            List<RegressionRechenweg.Fehlerkennzahlen> einzelKennzahlen = einzelLoo.stream()
+                    .map(RegressionRechenweg::fehlerkennzahlen).toList();
             for (int i = 1; i < nutzbar.size(); i++) {
-                if (einzelSumme[i] < einzelSumme[besteIndex]) {
+                Double fehler = einzelKennzahlen.get(i).mape();
+                Double bisher = einzelKennzahlen.get(besteIndex).mape();
+                if (fehler != null && (bisher == null || fehler < bisher)) {
                     besteIndex = i;
                 }
             }
-            double besterEinzel = einzelSumme[besteIndex] / anzahl;
+            Double besterEinzel = einzelKennzahlen.get(besteIndex).mape();
             String besteName = nutzbar.get(besteIndex).bezug().name();
 
             sb.append("Prüfung auf denselben ").append(anzahl)
                     .append(" alten Schiffen (alle mit jeder gewählten Bezugsgröße): ");
             for (int i = 0; i < nutzbar.size(); i++) {
-                sb.append(nutzbar.get(i).bezug().name()).append(" allein ")
-                        .append(PROZENT.format(einzelSumme[i] / anzahl)).append(" %, ");
+                sb.append('\n').append(nutzbar.get(i).bezug().name()).append(" allein: ")
+                        .append(fehlerText(einzelKennzahlen.get(i)));
             }
-            sb.append("Kombination ").append(PROZENT.format(kombiFehler)).append(" % daneben. ");
-            sb.append(kombiFehler < besterEinzel
-                    ? "Die Kombination ist genauer."
-                    : "Die Kombination ist nicht genauer, nehmt besser nur " + besteName + ".");
-            sb.append(" (Näherung: Die Gewichte stammen aus allen Schiffen.)");
+            sb.append("\nKombination: ").append(fehlerText(kombiKennzahlen));
+            Double kombiFehler = kombiKennzahlen.mape();
+            if (kombiFehler != null && besterEinzel != null) {
+                sb.append(kombiFehler < besterEinzel
+                        ? "\nIn dieser näherungsweisen Prüfung hat die Kombination den kleineren MAPE."
+                        : "\nIn dieser näherungsweisen Prüfung hat die Kombination keinen kleineren MAPE als " + besteName + ".");
+            }
+            sb.append("\nNäherung: Methodenauswahl und Gewichte stammen aus allen Schiffen. "
+                    + "Dies ist noch keine unabhängig geprüfte Prognosegüte.");
         }
 
         long wenige = nutzbar.stream().filter(f -> f.n() < 6).count();
@@ -427,6 +440,28 @@ public class KombiSchaetzungCard extends VBox {
         }
 
         return sb.toString();
+    }
+
+    private static RegressionRechenweg.LooZeile pruefZeile(
+            MatrixProjekt p, double referenz, double prognose) {
+        double abweichung = prognose - referenz;
+        return new RegressionRechenweg.LooZeile(
+                new RegressionRechenweg.Punkt(p.schiff(), "Referenz", 0, referenz),
+                prognose, abweichung,
+                referenz == 0 ? null : abweichung / referenz * 100);
+    }
+
+    private static String fehlerText(RegressionRechenweg.Fehlerkennzahlen f) {
+        return "MAPE " + fehlerZahl(f.mape()) + " %, MdAPE " + fehlerZahl(f.mdape())
+                + " %, MAE " + fehlerZahl(f.mae()) + " Brennstellen, max. "
+                + fehlerZahl(f.maxAbsolut()) + " Brennstellen / "
+                + fehlerZahl(f.maxProzent()) + " % ("
+                + f.nAbsolut() + "/" + f.nGesamt() + " absolut, "
+                + f.nProzent() + " prozentual).";
+    }
+
+    private static String fehlerZahl(Double wert) {
+        return wert == null ? "–" : ZAHL.format(wert);
     }
 
     // ------------------------------------------------------------------
@@ -555,14 +590,20 @@ public class KombiSchaetzungCard extends VBox {
                 zahlSpalte("n", z -> z.n() == null ? null : (double) z.n(), ZAHL, 60),
                 textSpalte("Beste Methode", Zeile::methode, 170),
                 textSpalte("Formel", Zeile::formel, 250),
-                zahlSpalte("Prognosefehler %", Zeile::fehler, PROZENT, 145),
+                zahlSpalte("MAPE (%)", Zeile::fehler, PROZENT, 110),
+                zahlSpalte("MdAPE (%)", z -> z.kennzahlen() == null ? null : z.kennzahlen().mdape(), PROZENT, 110),
+                zahlSpalte("MAE (Brennstellen)", z -> z.kennzahlen() == null ? null : z.kennzahlen().mae(), ZAHL, 155),
+                zahlSpalte("Max. Fehler (Brennstellen)", z -> z.kennzahlen() == null ? null : z.kennzahlen().maxAbsolut(), ZAHL, 185),
+                zahlSpalte("Max. Fehler (%)", z -> z.kennzahlen() == null ? null : z.kennzahlen().maxProzent(), PROZENT, 135),
+                textSpalte("LOO-Prüfumfang", z -> z.kennzahlen() == null ? ""
+                        : z.kennzahlen().nAbsolut() + "/" + z.kennzahlen().nGesamt()
+                        + " absolut; " + z.kennzahlen().nProzent() + " prozentual", 240),
                 zahlSpalte("Eingabe", Zeile::eingabe, ZAHL, 100),
                 zahlSpalte("Einzelschätzung", Zeile::schaetzung, ZAHL, 125),
-                zahlSpalte("Gewicht", z -> z.gewicht() == null ? null : z.gewicht() * 100,
+                zahlSpalte("Gewicht %", z -> z.gewicht() == null ? null : z.gewicht() * 100,
                         PROZENT, 90),
                 zahlSpalte("Beitrag", Zeile::beitrag, ZAHL, 100)
         ));
-        tabelle.getColumns().get(7).setText("Gewicht %");
         tabelle.setRowFactory(t -> new TableRow<>() {
             @Override
             protected void updateItem(Zeile item, boolean empty) {

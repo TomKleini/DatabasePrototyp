@@ -14,7 +14,7 @@ import java.util.function.Function;
  * 3. Median-Quote (robust, ohne Fixanteil)     y = k · x, k = Median(y / x)
  *
  * Dazu: Pearson r, Spearman ρ, Signifikanz, Ausreißer-Hinweis und der
- * Leave-one-out-Prognosefehler (MAPE) je Methode.
+ * Leave-one-out-Fehlerkennzahlen (MAPE, MdAPE, MAE und Maximalfehler).
  */
 public final class RegressionRechenweg {
 
@@ -51,6 +51,25 @@ public final class RegressionRechenweg {
             Double abweichung,
             Double abweichungProzent
     ) {
+    }
+
+    /** Fehler auf weggelassenen Schiffen, nicht auf den Trainingsdaten.
+     * Absolute Fehler haben die Einheit der Zielgröße y; Prozentfehler
+     * sind bei Referenzwert 0 nicht definiert. Null bedeutet nicht verfügbar.
+     */
+    public record Fehlerkennzahlen(
+            int nGesamt,
+            int nAbsolut,
+            int nProzent,
+            Double mape,
+            Double mdape,
+            Double mae,
+            Double maxAbsolut,
+            Double maxProzent
+    ) {
+        public int nichtBerechenbar() {
+            return nGesamt - nAbsolut;
+        }
     }
 
     /** Robuste Zwischenwerte für ein Schiff. */
@@ -98,6 +117,10 @@ public final class RegressionRechenweg {
     ) {
         public double prognose(double x) {
             return a + b * x;
+        }
+
+        public Fehlerkennzahlen fehlerkennzahlen() {
+            return RegressionRechenweg.fehlerkennzahlen(loo);
         }
     }
 
@@ -411,17 +434,49 @@ public final class RegressionRechenweg {
 
     /** Mittlerer absoluter Prozentfehler über alle berechenbaren Schiffe. */
     private static Double mape(List<LooZeile> loo) {
-        double summe = 0;
-        int anzahl = 0;
+        return fehlerkennzahlen(loo).mape();
+    }
 
+    /**
+     * Eine gemeinsame Berechnung für Methodenvergleich, Matrix und Kombination.
+     * Ungültige Prognosen werden gezählt, aber nicht als Fehler 0 verrechnet.
+     * Bei Referenzwert 0 bleiben absolute Fehler erhalten; Prozentfehler entfallen.
+     * Die Angaben werden aus Prognose und Referenzwert neu berechnet.
+     */
+    public static Fehlerkennzahlen fehlerkennzahlen(List<LooZeile> loo) {
+        List<Double> absolut = new ArrayList<>();
+        List<Double> prozent = new ArrayList<>();
         for (LooZeile z : loo) {
-            if (z.abweichungProzent() != null) {
-                summe += Math.abs(z.abweichungProzent());
-                anzahl++;
+            if (z == null || z.punkt() == null || z.prognose() == null
+                    || !Double.isFinite(z.prognose())
+                    || !Double.isFinite(z.punkt().y())) {
+                continue;
+            }
+            double fehler = Math.abs(z.prognose() - z.punkt().y());
+            if (!Double.isFinite(fehler)) {
+                continue;
+            }
+            absolut.add(fehler);
+            if (z.punkt().y() != 0) {
+                double anteil = fehler / Math.abs(z.punkt().y()) * 100;
+                if (Double.isFinite(anteil)) {
+                    prozent.add(anteil);
+                }
             }
         }
+        return new Fehlerkennzahlen(loo.size(), absolut.size(), prozent.size(),
+                mittelwert(prozent), prozent.isEmpty() ? null : median(prozent),
+                mittelwert(absolut), maximum(absolut), maximum(prozent));
+    }
 
-        return anzahl == 0 ? null : summe / anzahl;
+    private static Double mittelwert(List<Double> werte) {
+        return werte.isEmpty() ? null
+                : werte.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
+    }
+
+    private static Double maximum(List<Double> werte) {
+        return werte.isEmpty() ? null
+                : werte.stream().mapToDouble(Double::doubleValue).max().orElseThrow();
     }
 
     // ------------------------------------------------------------------

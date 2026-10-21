@@ -1,5 +1,15 @@
 package org.example;
 
+import org.example.model.Project;
+import org.example.database.Database;
+import org.example.repository.ProjectRepository;
+import org.example.repository.KpiRepository;
+import org.example.ui.project.ProjectOverviewView;
+import org.example.ui.project.ProjectDetailsView;
+import org.example.ui.project.ProjectFormView;
+import org.example.ui.project.ProjectEditView;
+import org.example.ui.calculation.KalkulationAuswahlView;
+
 import javafx.application.Application;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,15 +20,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import org.example.database.Database;
-import org.example.model.Project;
-import org.example.repository.KpiRepository;
-import org.example.repository.ProjectRepository;
-import org.example.ui.calculation.KalkulationView;
-import org.example.ui.project.ProjectDetailsView;
-import org.example.ui.project.ProjectEditView;
-import org.example.ui.project.ProjectFormView;
-import org.example.ui.project.ProjectOverviewView;
 
 import java.util.Objects;
 
@@ -108,13 +109,13 @@ public class Main extends Application {
         Button kpiButton = new Button("Kalkulation");
         Button powerBiButton = new Button("Power BI");
 
-        KalkulationView kalkulationView =
-                new KalkulationView(new KpiRepository());
+        KalkulationAuswahlView kalkulationAuswahlView =
+                new KalkulationAuswahlView(new KpiRepository());
 
         kpiButton.setOnAction(event -> {
             if (!allowNavigation(root)) return;
-            kalkulationView.reload();
-            root.setCenter(kalkulationView);
+            kalkulationAuswahlView.showStart();
+            root.setCenter(kalkulationAuswahlView);
             root.setRight(null);
         });
 

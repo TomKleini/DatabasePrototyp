@@ -1,3 +1,5 @@
+/* 20.10.2026: CSS-Klammern korrigiert; Auswahlregeln zusammengefasst. */
+
 .root {
     -fx-font-family: "Segoe UI";
     -fx-background-color: #f4f7fb;
@@ -183,128 +185,289 @@
 .hint {
     -fx-text-fill: #6b7280;
     -fx-font-size: 11px;
+}
+
+/* Kalkulation: feste Filter und getrennte Arbeitsbereiche */
+.calculation-content {
+    -fx-spacing: 14;
+    -fx-padding: 22 24 18 24;
+}
+
+.calculation-filter-card {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-border-color: #dbe5ef;
+    -fx-border-radius: 10;
+    -fx-padding: 12 16;
+}
+
+.calculation-refresh-button {
+    -fx-background-color: #edf4fa;
+    -fx-text-fill: #124e78;
+    -fx-background-radius: 7;
+    -fx-padding: 8 14;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.calculation-refresh-button:hover {
+    -fx-background-color: #d8ebfa;
+}
+
+.calculation-tabs {
+    -fx-tab-min-height: 36;
+    -fx-open-tab-animation: NONE;
+    -fx-close-tab-animation: NONE;
+}
+
+.calculation-tabs > .tab-header-area {
+    -fx-padding: 0 0 8 0;
+}
+
+.calculation-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: #e8eff6;
+    -fx-background-radius: 8 8 0 0;
+    -fx-padding: 8 15;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: #45627d;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: #1976b9;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: white;
+}
+
+.calculation-tab-scroll,
+.calculation-tab-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.calculation-tab-scroll {
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+}
+
+.calculation-tab-body {
+    -fx-padding: 8 10 16 0;
+}
+
+.calculation-tab-intro {
+    -fx-text-fill: #526b82;
+    -fx-font-size: 12px;
+    -fx-padding: 0 2 4 2;
+}
 
 
-    /* Kalkulation: feste Filter und getrennte Arbeitsbereiche */
-    .calculation-content {
-        -fx-spacing: 14;
-        -fx-padding: 22 24 18 24;
-    }
-
-    .calculation-filter-card {
-        -fx-background-color: white;
-        -fx-background-radius: 10;
-        -fx-border-color: #dbe5ef;
-        -fx-border-radius: 10;
-        -fx-padding: 12 16;
-    }
-
-    .calculation-refresh-button {
-        -fx-background-color: #edf4fa;
-        -fx-text-fill: #124e78;
-        -fx-background-radius: 7;
-        -fx-padding: 8 14;
-        -fx-font-weight: bold;
-        -fx-cursor: hand;
-    }
-
-    .calculation-refresh-button:hover {
-        -fx-background-color: #d8ebfa;
-    }
-
-    .calculation-tabs {
-        -fx-tab-min-height: 36;
-        -fx-open-tab-animation: NONE;
-        -fx-close-tab-animation: NONE;
-    }
-
-    .calculation-tabs > .tab-header-area {
-        -fx-padding: 0 0 8 0;
-    }
-
-    .calculation-tabs > .tab-header-area > .tab-header-background {
-        -fx-background-color: transparent;
-    }
-
-    .calculation-tabs > .tab-header-area > .headers-region > .tab {
-        -fx-background-color: #e8eff6;
-        -fx-background-radius: 8 8 0 0;
-        -fx-padding: 8 15;
-    }
-
-    .calculation-tabs > .tab-header-area > .headers-region > .tab .tab-label {
-        -fx-text-fill: #45627d;
-        -fx-font-size: 12px;
-        -fx-font-weight: bold;
-    }
-
-    .calculation-tabs > .tab-header-area > .headers-region > .tab:selected {
-        -fx-background-color: #1976b9;
-    }
-
-    .calculation-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
-        -fx-text-fill: white;
-    }
-
-    .calculation-tab-scroll,
-    .calculation-tab-scroll > .viewport {
-        -fx-background-color: transparent;
-    }
-
-    .calculation-tab-scroll {
-        -fx-padding: 0;
-        -fx-background-insets: 0;
-    }
-
-    .calculation-tab-body {
-        -fx-padding: 8 10 16 0;
-    }
-
-    .calculation-tab-intro {
-        -fx-text-fill: #526b82;
-        -fx-font-size: 12px;
-        -fx-padding: 0 2 4 2;
-    }
+/* Schritt 3: unten an die bestehende app.css anhängen. */
+.project-edit-tabs {
+    -fx-open-tab-animation: NONE;
+    -fx-close-tab-animation: NONE;
+}
+.project-edit-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+.project-edit-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: #e8eff6;
+    -fx-background-radius: 8 8 0 0;
+    -fx-padding: 9 14;
+}
+.project-edit-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: #1976b9;
+}
+.project-edit-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: white;
+}
+.project-edit-scroll,
+.project-edit-scroll > .viewport,
+.project-edit-body {
+    -fx-background-color: white;
+}
+.project-edit-scroll {
+    -fx-border-color: #dbe5ef;
+    -fx-border-radius: 0 8 8 8;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+.project-edit .text-field,
+.project-edit .combo-box,
+.project-edit .date-picker {
+    -fx-pref-height: 34;
+}
+.project-edit-error {
+    -fx-text-fill: #b42318;
+    -fx-font-size: 12px;
+}
 
 
-    /* Schritt 3: unten an die bestehende app.css anhängen. */
-    .project-edit-tabs {
-        -fx-open-tab-animation: NONE;
-        -fx-close-tab-animation: NONE;
-    }
-    .project-edit-tabs > .tab-header-area > .tab-header-background {
-        -fx-background-color: transparent;
-    }
-    .project-edit-tabs > .tab-header-area > .headers-region > .tab {
-        -fx-background-color: #e8eff6;
-        -fx-background-radius: 8 8 0 0;
-        -fx-padding: 9 14;
-    }
-    .project-edit-tabs > .tab-header-area > .headers-region > .tab:selected {
-        -fx-background-color: #1976b9;
-    }
-    .project-edit-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
-        -fx-text-fill: white;
-    }
-    .project-edit-scroll,
-    .project-edit-scroll > .viewport,
-    .project-edit-body {
-        -fx-background-color: white;
-    }
-    .project-edit-scroll {
-        -fx-border-color: #dbe5ef;
-        -fx-border-radius: 0 8 8 8;
-        -fx-background-insets: 0;
-        -fx-padding: 0;
-    }
-    .project-edit .text-field,
-    .project-edit .combo-box,
-    .project-edit .date-picker {
-        -fx-pref-height: 34;
-    }
-    .project-edit-error {
-        -fx-text-fill: #b42318;
-        -fx-font-size: 12px;
-    }
+/* Schritt 4: unten an die vorhandene app.css anhängen. */
+.calculation-area,
+.calculation-menu-scroll,
+.calculation-menu-scroll > .viewport {
+    -fx-background-color: #f4f7fb;
+}
+.calculation-menu-scroll {
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+}
+.calculation-menu-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #dbe5ef;
+    -fx-border-radius: 12;
+    -fx-padding: 22;
+}
+.calculation-menu-card.available {
+    -fx-border-color: #9fc5e4;
+}
+.calculation-menu-card.available:hover {
+    -fx-border-color: #1976b9;
+}
+.calculation-menu-card.planned {
+    -fx-background-color: #eef1f5;
+    -fx-border-color: #dce2e9;
+}
+.calculation-menu-number {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1976b9;
+}
+.calculation-menu-badge {
+    -fx-font-size: 10px;
+    -fx-padding: 5 8;
+    -fx-background-radius: 12;
+}
+.calculation-menu-badge.available {
+    -fx-background-color: #e1effa;
+    -fx-text-fill: #125f96;
+}
+.calculation-menu-badge.planned {
+    -fx-background-color: #e0e5eb;
+    -fx-text-fill: #657589;
+}
+.calculation-menu-card-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #16324f;
+}
+.calculation-menu-description {
+    -fx-font-size: 13px;
+    -fx-text-fill: #526b82;
+}
+.calculation-menu-detail {
+    -fx-font-size: 11px;
+    -fx-text-fill: #687b8e;
+}
+.calculation-menu-card.planned .calculation-menu-card-title,
+.calculation-menu-card.planned .calculation-menu-number {
+    -fx-text-fill: #718196;
+}
+.calculation-menu-disabled-button:disabled {
+    -fx-opacity: 1;
+    -fx-background-color: #dfe5ec;
+    -fx-text-fill: #718196;
+    -fx-background-radius: 7;
+    -fx-padding: 10 14;
+}
+.calculation-menu-note {
+    -fx-text-fill: #687b8e;
+    -fx-font-size: 12px;
+}
+.calculation-menu-error {
+    -fx-text-fill: #b42318;
+}
+.calculation-back-button {
+    -fx-background-color: #e1edf8;
+    -fx-text-fill: #125f96;
+    -fx-background-radius: 7;
+    -fx-padding: 8 12;
+    -fx-cursor: hand;
+}
+.calculation-back-button:hover {
+    -fx-background-color: #d2e5f5;
+}
+.calculation-breadcrumb {
+    -fx-text-fill: #687b8e;
+    -fx-font-size: 11px;
+}
 
+/* ============================================================
+   KALKULATIONSAUSWAHL
+   Farben und Rundung der drei Auswahlbuttons hier anpassen.
+   ============================================================ */
+
+/* Hintergrund der Seite (nicht der Buttons). */
+.calculation-choice-content {
+    -fx-padding: 28;
+    -fx-background-color: #f4f7fb;
+}
+
+.calculation-choice-heading {
+    -fx-padding: 8 0 0 0;
+}
+
+/* Aktiver Button: Hintergrund, Rand, Rundung und Schrift. */
+.calculation-choice {
+    -fx-background-color: #1976b9;
+    -fx-border-color: #1976b9;
+    -fx-background-radius: 30;
+    -fx-border-radius: 30;
+    -fx-border-width: 1.4;
+    -fx-padding: 16 12;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(21, 63, 99, 0.10), 12, 0, 0, 4);
+}
+
+/* Gluhbirne, Kabel und Checkliste. */
+.calculation-choice .calculation-choice-icon {
+    -fx-fill: transparent;
+    -fx-stroke: white;
+    -fx-stroke-width: 2.6;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
+}
+
+/* Maus uber dem aktiven Button. */
+.calculation-choice:hover {
+    -fx-background-color: #125f96;
+    -fx-border-color: #125f96;
+}
+
+/* Button wird gedruckt. */
+.calculation-choice:pressed {
+    -fx-background-color: #0e4f7d;
+    -fx-border-color: #0e4f7d;
+}
+
+/* Sichtbare Markierung bei Tastaturbedienung. */
+.calculation-choice:focused {
+    -fx-border-color: #7ed3ff;
+    -fx-border-width: 2.4;
+}
+
+/* Geplante Bereiche: Kabel und eigenstandige Aufwandsschatzung. */
+.calculation-choice:disabled {
+    -fx-opacity: 1;
+    -fx-background-color: #e5ebf2;
+    -fx-border-color: #d3dce6;
+    -fx-text-fill: #8b98a8;
+    -fx-effect: null;
+    -fx-cursor: default;
+}
+
+.calculation-choice:disabled .calculation-choice-icon {
+    -fx-stroke: #8b98a8;
 }

@@ -1,5 +1,10 @@
 package org.example.ui.calculation;
 
+import org.example.model.MatrixProjekt;
+import org.example.repository.MatrixRepository;
+import org.example.calculation.RegressionRechenweg;
+import org.example.calculation.SchaetzungsVergleich;
+
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
@@ -22,12 +27,10 @@ import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import org.example.calculation.RegressionRechenweg;
-import org.example.model.MatrixProjekt;
-import org.example.repository.MatrixRepository;
 
 /**
  * Kombinierte Schätzung der Brennstellen aus mehreren Bezugsgrößen.
@@ -121,6 +124,8 @@ public class KombiSchaetzungCard extends VBox {
     private final TableView<Zeile> tabelle = new TableView<>();
     private final Label ergebnis = new Label();
     private final Label pruefung = new Label();
+    private final SchaetzungsVergleichCard methodenVergleich = new SchaetzungsVergleichCard();
+    private final SchaetzungsVergleichCard schiffstypVergleich = new SchaetzungsVergleichCard(true);
 
     /** Ein altes Schiff im Ähnlichkeits-Ranking. */
     private record Aehnlich(
@@ -198,8 +203,17 @@ public class KombiSchaetzungCard extends VBox {
         aehnlichHinweis.getStyleClass().add("hint");
         aehnlichTabelle.setPlaceholder(new Label("Werte des neuen Schiffs eingeben."));
 
+        TitledPane vergleichBereich = new TitledPane("Zusätzlicher Methodenvergleich", methodenVergleich);
+        vergleichBereich.setId("zusaetzlicher-methodenvergleich");
+        vergleichBereich.setExpanded(false);
+        vergleichBereich.setAnimated(false);
+        TitledPane typVergleichBereich = new TitledPane("Vergleich mit Schiffstyp", schiffstypVergleich);
+        typVergleichBereich.setId("schiffstyp-methodenvergleich");
+        typVergleichBereich.setExpanded(false);
+        typVergleichBereich.setAnimated(false);
         getChildren().addAll(kopf, eingabeRaster, tabelle, ergebnis,
-                erklaerung, pruefung, aehnlichTitel, aehnlichTabelle, aehnlichHinweis);
+                erklaerung, pruefung, vergleichBereich, typVergleichBereich,
+                aehnlichTitel, aehnlichTabelle, aehnlichHinweis);
     }
 
     /** Wie KorrelationsMatrixCard.setFilter: null = alle. */
@@ -300,6 +314,15 @@ public class KombiSchaetzungCard extends VBox {
 
         pruefung.setText(pruefText(formeln, roh));
         fuelleAehnlich();
+        Map<String, Double> vergleichEingaben = new LinkedHashMap<>();
+        for (Bezug b : BEZUEGE) {
+            Double x = eingabe(b);
+            if (auswahl.get(b).isSelected() && x != null) vergleichEingaben.put(b.schluessel(), x);
+        }
+        methodenVergleich.setKontext(projekte, vergleichEingaben,
+                SchaetzungsVergleich.Basis.valueOf(basisAuswahl.getValue().name()));
+        schiffstypVergleich.setKontext(projekte, vergleichEingaben,
+                SchaetzungsVergleich.Basis.valueOf(basisAuswahl.getValue().name()));
     }
 
     private Formel rechneFormel(Bezug b) {
@@ -536,8 +559,9 @@ public class KombiSchaetzungCard extends VBox {
         for (Kandidat k : kandidaten.subList(0, Math.min(TOP_AEHNLICH, kandidaten.size()))) {
             Double ist = k.p().wert("LIGHTING_POINTS:ist");
             Double soll = k.p().wert("LIGHTING_POINTS:soll");
-            Double bs = ist != null ? ist : soll;
-            String quelle = ist != null ? "Ist" : soll != null ? "Soll" : "";
+            Double bs = brennstellen(k.p());
+            String quelle = bs == null ? "" : basisAuswahl.getValue() == Basis.SOLL ? "Soll"
+                    : ist != null ? "Ist" : "Soll";
 
             zeilen.add(new Aehnlich(
                     rang++,
@@ -640,7 +664,7 @@ public class KombiSchaetzungCard extends VBox {
         }
         try {
             double wert = Double.parseDouble(s);
-            return wert > 0 ? wert : null;
+            return Double.isFinite(wert) && wert > 0 ? wert : null;
         } catch (NumberFormatException e) {
             return null;
         }

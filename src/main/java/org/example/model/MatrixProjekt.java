@@ -1,5 +1,7 @@
 package org.example.model;
 
+
+
 import java.util.Map;
 
 /**
@@ -13,8 +15,15 @@ public record MatrixProjekt(
         int id,
         String schiff,
         String werft,
-        Map<String, Double> werte
+        Map<String, Double> werte,
+        String kategorie,
+        String schiffstyp
 ) {
+    /** Bisherige Aufrufer ohne Typdaten bleiben verwendbar. */
+    public MatrixProjekt(int id, String schiff, String werft, Map<String, Double> werte) {
+        this(id, schiff, werft, werte, null, null);
+    }
+
     public Double wert(String schluessel) {
         return werte.get(schluessel);
     }

@@ -1,7 +1,7 @@
 package org.example.repository;
 
-import org.example.database.Database;
 import org.example.model.MatrixProjekt;
+import org.example.database.Database;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -46,6 +46,8 @@ public class MatrixRepository {
                     p.id,
                     p.ship_name,
                     sy.name AS shipyard,
+                    sc.name AS category_name,
+                    st.name AS ship_type_name,
                     p.length_m,
                     p.width_m,
                     p.volume_gt,
@@ -104,7 +106,9 @@ public class MatrixRepository {
                                 id,
                                 result.getString("ship_name"),
                                 result.getString("shipyard"),
-                                werte));
+                                werte,
+                                result.getString("category_name"),
+                                result.getString("ship_type_name")));
                     }
                 }
             }

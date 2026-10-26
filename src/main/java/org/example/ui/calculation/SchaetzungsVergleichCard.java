@@ -1,6 +1,6 @@
 package org.example.ui.calculation;
 
-import org.example.calculation.SchaetzungsVergleich;
+import org.example.ui.calculation.SchaetzungsVergleich;
 import org.example.model.MatrixProjekt;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;

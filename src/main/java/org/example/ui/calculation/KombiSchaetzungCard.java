@@ -3,7 +3,7 @@ package org.example.ui.calculation;
 import org.example.model.MatrixProjekt;
 import org.example.repository.MatrixRepository;
 import org.example.calculation.RegressionRechenweg;
-import org.example.calculation.SchaetzungsVergleich;
+import org.example.ui.calculation.SchaetzungsVergleich;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;

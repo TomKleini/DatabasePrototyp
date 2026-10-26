@@ -14,7 +14,7 @@ import java.util.function.Function;
  * 3. Median-Quote (robust, ohne Fixanteil)     y = k · x, k = Median(y / x)
  *
  * Dazu: Pearson r, Spearman ρ, Signifikanz, Ausreißer-Hinweis und der
- * Leave-one-out-Fehlerkennzahlen (MAPE, MdAPE, MAE und Maximalfehler).
+ * Leave-one-out-Prognosefehler (MAPE) je Methode.
  */
 public final class RegressionRechenweg {
 
@@ -51,25 +51,6 @@ public final class RegressionRechenweg {
             Double abweichung,
             Double abweichungProzent
     ) {
-    }
-
-    /** Fehler auf weggelassenen Schiffen, nicht auf den Trainingsdaten.
-     * Absolute Fehler haben die Einheit der Zielgröße y; Prozentfehler
-     * sind bei Referenzwert 0 nicht definiert. Null bedeutet nicht verfügbar.
-     */
-    public record Fehlerkennzahlen(
-            int nGesamt,
-            int nAbsolut,
-            int nProzent,
-            Double mape,
-            Double mdape,
-            Double mae,
-            Double maxAbsolut,
-            Double maxProzent
-    ) {
-        public int nichtBerechenbar() {
-            return nGesamt - nAbsolut;
-        }
     }
 
     /** Robuste Zwischenwerte für ein Schiff. */
@@ -119,6 +100,7 @@ public final class RegressionRechenweg {
             return a + b * x;
         }
 
+        /** Fehlerkennzahlen aus der Leave-one-out-Prüfung dieser Methode. */
         public Fehlerkennzahlen fehlerkennzahlen() {
             return RegressionRechenweg.fehlerkennzahlen(loo);
         }
@@ -434,49 +416,91 @@ public final class RegressionRechenweg {
 
     /** Mittlerer absoluter Prozentfehler über alle berechenbaren Schiffe. */
     private static Double mape(List<LooZeile> loo) {
-        return fehlerkennzahlen(loo).mape();
+        double summe = 0;
+        int anzahl = 0;
+
+        for (LooZeile z : loo) {
+            if (z.abweichungProzent() != null) {
+                summe += Math.abs(z.abweichungProzent());
+                anzahl++;
+            }
+        }
+
+        return anzahl == 0 ? null : summe / anzahl;
+    }
+
+    // ------------------------------------------------------------------
+    // Fehlerkennzahlen für einen Satz von Prognosen
+    // ------------------------------------------------------------------
+
+    /**
+     * Fehlerkennzahlen über mehrere Prüffälle.
+     *
+     * mae         mittlerer absoluter Fehler (in Einheiten von y)
+     * mape        mittlerer absoluter Prozentfehler
+     * mdape       Median des absoluten Prozentfehlers (robust)
+     * maxAbsolut  größter absoluter Fehler
+     * maxProzent  größter Prozentfehler
+     * nAbsolut    Anzahl Fälle mit Prognose
+     * nProzent    davon Fälle mit Ist ≠ 0 (nur diese gehen in % ein)
+     *
+     * Die Werte sind null, wenn kein passender Fall vorliegt.
+     */
+    public record Fehlerkennzahlen(
+            Double mae,
+            Double mape,
+            Double mdape,
+            Double maxAbsolut,
+            Double maxProzent,
+            int nAbsolut,
+            int nProzent,
+            int nGesamt
+    ) {
+        /** Prüffälle ohne gültige Prognose. */
+        public int nichtBerechenbar() {
+            return nGesamt - nAbsolut;
+        }
     }
 
     /**
-     * Eine gemeinsame Berechnung für Methodenvergleich, Matrix und Kombination.
-     * Ungültige Prognosen werden gezählt, aber nicht als Fehler 0 verrechnet.
-     * Bei Referenzwert 0 bleiben absolute Fehler erhalten; Prozentfehler entfallen.
-     * Die Angaben werden aus Prognose und Referenzwert neu berechnet.
+     * Rechnet die Fehlerkennzahlen aus Prognose und Ist (punkt().y()).
+     * Zeilen ohne gültige Prognose werden übersprungen.
      */
-    public static Fehlerkennzahlen fehlerkennzahlen(List<LooZeile> loo) {
+    public static Fehlerkennzahlen fehlerkennzahlen(List<LooZeile> zeilen) {
         List<Double> absolut = new ArrayList<>();
         List<Double> prozent = new ArrayList<>();
-        for (LooZeile z : loo) {
+
+        for (LooZeile z : zeilen) {
             if (z == null || z.punkt() == null || z.prognose() == null
                     || !Double.isFinite(z.prognose())
                     || !Double.isFinite(z.punkt().y())) {
                 continue;
             }
-            double fehler = Math.abs(z.prognose() - z.punkt().y());
-            if (!Double.isFinite(fehler)) {
-                continue;
-            }
+
+            double ist = z.punkt().y();
+            double fehler = Math.abs(z.prognose() - ist);
             absolut.add(fehler);
-            if (z.punkt().y() != 0) {
-                double anteil = fehler / Math.abs(z.punkt().y()) * 100;
-                if (Double.isFinite(anteil)) {
-                    prozent.add(anteil);
-                }
+
+            if (ist != 0) {
+                prozent.add(fehler / Math.abs(ist) * 100);
             }
         }
-        return new Fehlerkennzahlen(loo.size(), absolut.size(), prozent.size(),
-                mittelwert(prozent), prozent.isEmpty() ? null : median(prozent),
-                mittelwert(absolut), maximum(absolut), maximum(prozent));
+
+        return new Fehlerkennzahlen(
+                mittel(absolut),
+                mittel(prozent),
+                prozent.isEmpty() ? null : median(prozent),
+                absolut.stream().max(Double::compare).orElse(null),
+                prozent.stream().max(Double::compare).orElse(null),
+                absolut.size(),
+                prozent.size(),
+                zeilen.size());
     }
 
-    private static Double mittelwert(List<Double> werte) {
-        return werte.isEmpty() ? null
-                : werte.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
-    }
-
-    private static Double maximum(List<Double> werte) {
-        return werte.isEmpty() ? null
-                : werte.stream().mapToDouble(Double::doubleValue).max().orElseThrow();
+    private static Double mittel(List<Double> werte) {
+        return werte.isEmpty()
+                ? null
+                : werte.stream().mapToDouble(Double::doubleValue).average().orElse(Double.NaN);
     }
 
     // ------------------------------------------------------------------

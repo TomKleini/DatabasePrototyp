@@ -1,10 +1,11 @@
-package org.example.calculation;
+package org.example.ui.calculation;
 
 import org.example.model.MatrixProjekt;
 import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import org.example.calculation.RegressionRechenweg;
 
 /** Zusatzvergleich ohne Änderung der bisherigen Schätzung.
  * Die äußere Prüfung lässt ein Projekt vollständig weg. Auch Regressionstyp,

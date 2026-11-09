@@ -31,6 +31,9 @@ import javafx.scene.control.TitledPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.Priority;
+import javafx.scene.Node;
 
 /**
  * Kombinierte Schätzung der Brennstellen aus mehreren Bezugsgrößen.
@@ -123,7 +126,11 @@ public class KombiSchaetzungCard extends VBox {
     private final Map<Bezug, TextField> eingaben = new LinkedHashMap<>();
     private final TableView<Zeile> tabelle = new TableView<>();
     private final Label ergebnis = new Label();
+    private final Label ergebnisHinweis = new Label();
     private final Label pruefung = new Label();
+    private final GridPane kopfRaster = new GridPane();
+    private final VBox ersteSchaetzung = new VBox(16);
+    private boolean schmaleAnsicht;
     private final SchaetzungsVergleichCard methodenVergleich = new SchaetzungsVergleichCard();
     private final SchaetzungsVergleichCard schiffstypVergleich = new SchaetzungsVergleichCard(true);
 
@@ -147,25 +154,38 @@ public class KombiSchaetzungCard extends VBox {
     private final Label aehnlichHinweis = new Label();
 
     public KombiSchaetzungCard() {
-        setSpacing(12);
+        setSpacing(16);
+        setMinWidth(0);
 
         basisAuswahl.getItems().setAll(Basis.values());
         basisAuswahl.setValue(Basis.IST_SONST_SOLL);
         basisAuswahl.setOnAction(event -> neuRechnen());
 
-        HBox kopf = new HBox(10, new Label("Brennstellen-Wert der alten Schiffe:"),
-                basisAuswahl);
-        kopf.setAlignment(Pos.CENTER_LEFT);
+        Label basisTitel = new Label("Brennstellenbasis der Referenzprojekte");
+        basisTitel.getStyleClass().add("estimate-field-label");
+        basisTitel.setLabelFor(basisAuswahl);
+        basisAuswahl.setMaxWidth(Double.MAX_VALUE);
+        basisAuswahl.setId("estimate-basis");
+        VBox basisFeld = new VBox(6, basisTitel, basisAuswahl);
 
         GridPane eingabeRaster = new GridPane();
-        eingabeRaster.setHgap(10);
-        eingabeRaster.setVgap(6);
-        eingabeRaster.addRow(0, fett("Verwenden"), fett("Neues Schiff"));
+        eingabeRaster.setHgap(12);
+        eingabeRaster.setVgap(12);
+        eingabeRaster.getStyleClass().add("estimate-input-grid");
+        ColumnConstraints bezugSpalte = new ColumnConstraints();
+        bezugSpalte.setPercentWidth(58);
+        ColumnConstraints wertSpalte = new ColumnConstraints();
+        wertSpalte.setPercentWidth(42);
+        wertSpalte.setHgrow(Priority.ALWAYS);
+        eingabeRaster.getColumnConstraints().setAll(bezugSpalte, wertSpalte);
+        eingabeRaster.addRow(0, feldLabel("Verwenden"), feldLabel("Neues Schiff"));
 
         int zeile = 1;
         for (Bezug b : BEZUEGE) {
             CheckBox box = new CheckBox(b.name() + " (" + b.einheit() + ")");
             box.setSelected(b.standard());
+            box.setWrapText(true);
+            box.setId("estimate-use-" + b.schluessel());
             box.setOnAction(event -> neuRechnen());
             if (b.warnung() != null) {
                 Tooltip.install(box, new Tooltip(b.warnung()));
@@ -175,6 +195,10 @@ public class KombiSchaetzungCard extends VBox {
             TextField feld = new TextField();
             feld.setPromptText(b.name() + " in " + b.einheit());
             feld.setPrefWidth(160);
+            feld.setMinWidth(75);
+            feld.setMaxWidth(Double.MAX_VALUE);
+            feld.setId("estimate-input-" + b.schluessel());
+            feld.setAccessibleText(b.name() + " des neuen Schiffs in " + b.einheit());
             feld.textProperty().addListener((obs, alt, neu) -> neuRechnen());
 
             auswahl.put(b, box);
@@ -184,10 +208,16 @@ public class KombiSchaetzungCard extends VBox {
 
         baueTabelle();
 
-        ergebnis.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        ergebnis.setId("estimate-result");
+        ergebnis.getStyleClass().add("estimate-result-value");
         ergebnis.setWrapText(true);
+        ergebnis.setText("–");
+        ergebnisHinweis.setWrapText(true);
+        ergebnisHinweis.getStyleClass().add("estimate-result-note");
+        ergebnisHinweis.setText("Werte des neuen Schiffs eingeben, um die Brennstellen zu schätzen.");
+        pruefung.setId("estimate-validation");
         pruefung.setWrapText(true);
-        pruefung.getStyleClass().add("hint");
+        pruefung.getStyleClass().add("estimate-validation-text");
 
         Label erklaerung = new Label(
                 "Formel: Brennstellen = Σ Gewicht × Einzelschätzung.  "
@@ -195,13 +225,47 @@ public class KombiSchaetzungCard extends VBox {
                         + "Eine Bezugsgröße mit halb so großem Prognosefehler "
                         + "bekommt viermal so viel Gewicht.");
         erklaerung.setWrapText(true);
-        erklaerung.getStyleClass().add("hint");
+        erklaerung.getStyleClass().add("estimate-body-text");
 
         Label aehnlichTitel = new Label("Ähnlichste Schiffe zu den eingegebenen Werten");
-        aehnlichTitel.setStyle("-fx-font-weight: bold; -fx-padding: 8 0 0 0;");
+        aehnlichTitel.getStyleClass().add("estimate-section-title");
         aehnlichHinweis.setWrapText(true);
-        aehnlichHinweis.getStyleClass().add("hint");
+        aehnlichHinweis.getStyleClass().add("estimate-body-text");
         aehnlichTabelle.setPlaceholder(new Label("Werte des neuen Schiffs eingeben."));
+        aehnlichTabelle.setMinWidth(0);
+        aehnlichTabelle.setId("estimate-similar-ships");
+        aehnlichTabelle.getStyleClass().add("estimate-table");
+        tabelle.setMinWidth(0);
+        tabelle.setId("estimate-methods");
+        tabelle.getStyleClass().add("estimate-table");
+
+        Label eingabeHinweis = beschreibung("Ausgewählte Größen verwenden. Die Schätzung aktualisiert sich bei Eingabe automatisch.");
+        VBox eingabeKarte = karte("Projektdaten", "Bezugsgrößen für das neue Schiff festlegen.",
+                basisFeld, eingabeRaster, eingabeHinweis);
+        Label ergebnisTitel = feldLabel("Geschätzte Brennstellen");
+        ergebnisTitel.getStyleClass().add("estimate-result-title");
+        VBox ergebnisFeld = new VBox(7, ergebnisTitel, ergebnis, ergebnisHinweis);
+        ergebnisFeld.getStyleClass().add("estimate-result-panel");
+        VBox prognoseKarte = karte("Schätzung", "Gewichtetes Ergebnis der verwendbaren Bezugsgrößen.",
+                ergebnisFeld, abschnitt("Gewichtung"), erklaerung);
+        kopfRaster.setHgap(16); kopfRaster.setVgap(16);
+        kopfRaster.setMinWidth(0);
+        kopfRaster.getChildren().addAll(eingabeKarte, prognoseKarte);
+        ordneKopfAn(900);
+        ersteSchaetzung.widthProperty().addListener((o,alt,neu) -> ordneKopfAn(neu.doubleValue()));
+
+        VBox methodenKarte = karte("Methoden und Beiträge", "Formeln, Fehlerkennzahlen, Eingaben und Gewichte. Weitere Spalten durch horizontales Scrollen anzeigen.", tabelle);
+        VBox pruefKarte = karte("Prüfung der kombinierten Schätzung", "Vergleich auf gemeinsamen historischen Projekten.", pruefung);
+        VBox referenzKarte = new VBox(12, aehnlichTitel, aehnlichTabelle, aehnlichHinweis);
+        referenzKarte.setMinWidth(0);
+        referenzKarte.getStyleClass().add("estimate-card");
+        ersteSchaetzung.getStyleClass().add("estimate-main");
+        ersteSchaetzung.setId("estimate-main");
+        ersteSchaetzung.setMinWidth(0);
+        ersteSchaetzung.getChildren().addAll(kopfRaster, methodenKarte, pruefKarte, referenzKarte);
+        var design = KombiSchaetzungCard.class.getResource("/org/example/schaetzung.css");
+        if (design != null) ersteSchaetzung.getStylesheets().add(design.toExternalForm());
+        else System.err.println("Design-Datei fehlt: src/main/resources/org/example/schaetzung.css");
 
         TitledPane vergleichBereich = new TitledPane("Zusätzlicher Methodenvergleich", methodenVergleich);
         vergleichBereich.setId("zusaetzlicher-methodenvergleich");
@@ -211,9 +275,7 @@ public class KombiSchaetzungCard extends VBox {
         typVergleichBereich.setId("schiffstyp-methodenvergleich");
         typVergleichBereich.setExpanded(false);
         typVergleichBereich.setAnimated(false);
-        getChildren().addAll(kopf, eingabeRaster, tabelle, ergebnis,
-                erklaerung, pruefung, vergleichBereich, typVergleichBereich,
-                aehnlichTitel, aehnlichTabelle, aehnlichHinweis);
+        getChildren().addAll(ersteSchaetzung, vergleichBereich, typVergleichBereich);
     }
 
     /** Wie KorrelationsMatrixCard.setFilter: null = alle. */
@@ -302,14 +364,16 @@ public class KombiSchaetzungCard extends VBox {
         passeHoeheAn(tabelle);
 
         if (verwendet == 0) {
-            ergebnis.setText("Werte des neuen Schiffs eingeben, um die Brennstellen zu schätzen.");
+            ergebnis.setText("–");
+            ergebnisHinweis.setText("Werte des neuen Schiffs eingeben, um die Brennstellen zu schätzen.");
         } else {
-            String text = "Geschätzte Brennstellen: " + ZAHL.format(Math.round(kombiniert));
+            ergebnis.setText(ZAHL.format(Math.round(kombiniert)));
+            String text = "Gewichtete Schätzung aus den verwendbaren Eingaben.";
             if (verwendet > 1) {
-                text += "   (Einzelschätzungen von " + ZAHL.format(Math.round(min))
-                        + " bis " + ZAHL.format(Math.round(max)) + ")";
+                text = "Einzelschätzungen von " + ZAHL.format(Math.round(min))
+                        + " bis " + ZAHL.format(Math.round(max)) + ".";
             }
-            ergebnis.setText(text);
+            ergebnisHinweis.setText(text);
         }
 
         pruefung.setText(pruefText(formeln, roh));
@@ -673,6 +737,48 @@ public class KombiSchaetzungCard extends VBox {
     // ------------------------------------------------------------------
     // Hilfsmethoden
     // ------------------------------------------------------------------
+
+    /** Ausschließlich Anordnung: dieselben Steuerelemente werden umpositioniert. */
+    private void ordneKopfAn(double breite) {
+        boolean schmal = breite < 760;
+        if (kopfRaster.getColumnConstraints().isEmpty() || schmal != schmaleAnsicht) {
+            schmaleAnsicht = schmal;
+            ColumnConstraints links = new ColumnConstraints();
+            links.setPercentWidth(schmal ? 100 : 44);
+            kopfRaster.getColumnConstraints().setAll(links);
+            if (!schmal) {
+                ColumnConstraints rechts = new ColumnConstraints();
+                rechts.setPercentWidth(56);
+                kopfRaster.getColumnConstraints().add(rechts);
+            }
+            GridPane.setConstraints(kopfRaster.getChildren().get(0), 0, 0);
+            GridPane.setConstraints(kopfRaster.getChildren().get(1), schmal ? 0 : 1, schmal ? 1 : 0);
+            for (Node node : kopfRaster.getChildren()) GridPane.setHgrow(node, Priority.ALWAYS);
+        }
+    }
+
+    private static VBox karte(String titel, String untertitel, Node... inhalt) {
+        VBox box = new VBox(12, abschnitt(titel), beschreibung(untertitel));
+        box.setMinWidth(0);
+        box.getStyleClass().add("estimate-card");
+        box.getChildren().addAll(inhalt);
+        return box;
+    }
+
+    private static Label abschnitt(String text) {
+        Label label = new Label(text); label.setWrapText(true);
+        label.getStyleClass().add("estimate-section-title"); return label;
+    }
+
+    private static Label beschreibung(String text) {
+        Label label = new Label(text); label.setWrapText(true);
+        label.getStyleClass().add("estimate-description"); return label;
+    }
+
+    private static Label feldLabel(String text) {
+        Label label = new Label(text); label.setWrapText(true);
+        label.getStyleClass().add("estimate-field-label"); return label;
+    }
 
     private static Label fett(String text) {
         Label label = new Label(text);

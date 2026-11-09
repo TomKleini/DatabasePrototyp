@@ -1,11 +1,11 @@
-/* Nur die erste Brennstellen-Schaetzung. Wird von KombiSchaetzungCard geladen.
-   Die beiden zusaetzlichen Vergleiche liegen ausserhalb von .estimate-main. */
+/* Gestaltung des ersten Schätzungsbereichs */
 .estimate-main {
     -fx-background-color: #f3f7fc;
     -fx-background-radius: 14;
     -fx-padding: 16;
     -fx-spacing: 16;
 }
+
 .estimate-main .estimate-card {
     -fx-background-color: white;
     -fx-background-radius: 10;
@@ -15,21 +15,25 @@
     -fx-spacing: 12;
     -fx-effect: dropshadow(gaussian, rgba(18, 67, 111, 0.04), 9, 0, 0, 2);
 }
+
 .estimate-main .estimate-section-title {
     -fx-font-size: 18;
     -fx-font-weight: bold;
     -fx-text-fill: #07559d;
 }
+
 .estimate-main .estimate-description {
     -fx-text-fill: #63788c;
     -fx-font-size: 12;
     -fx-line-spacing: 2;
 }
+
 .estimate-main .estimate-field-label {
     -fx-text-fill: #263f59;
     -fx-font-size: 12;
     -fx-font-weight: bold;
 }
+
 .estimate-main .text-field,
 .estimate-main .combo-box {
     -fx-background-color: white;
@@ -41,16 +45,19 @@
     -fx-font-size: 12;
     -fx-padding: 4 8;
 }
+
 .estimate-main .text-field:focused,
 .estimate-main .combo-box:focused {
     -fx-border-color: #1670ba;
     -fx-effect: dropshadow(gaussian, rgba(22, 112, 186, 0.12), 5, 0, 0, 0);
 }
+
 .estimate-main .check-box {
     -fx-text-fill: #304a63;
     -fx-font-size: 12;
     -fx-label-padding: 0 0 0 8;
 }
+
 .estimate-main .check-box > .box {
     -fx-background-color: white;
     -fx-border-color: #c1d2e2;
@@ -58,11 +65,16 @@
     -fx-background-radius: 4;
     -fx-padding: 4;
 }
+
 .estimate-main .check-box:selected > .box {
     -fx-background-color: #0868b3;
     -fx-border-color: #0868b3;
 }
-.estimate-main .check-box:selected > .box > .mark { -fx-background-color: white; }
+
+.estimate-main .check-box:selected > .box > .mark {
+    -fx-background-color: white;
+}
+
 .estimate-main .estimate-result-panel {
     -fx-background-color: linear-gradient(to bottom right, #edf6ff, #f4f9ff);
     -fx-background-radius: 8;
@@ -70,23 +82,30 @@
     -fx-border-radius: 8;
     -fx-padding: 18 20;
 }
-.estimate-main .estimate-result-title { -fx-text-fill: #07559d; }
+
+.estimate-main .estimate-result-title {
+    -fx-text-fill: #07559d;
+}
+
 .estimate-main .estimate-result-value {
     -fx-font-size: 38;
     -fx-font-weight: bold;
     -fx-text-fill: #073a6b;
 }
+
 .estimate-main .estimate-result-note {
     -fx-text-fill: #456783;
     -fx-font-size: 12;
     -fx-line-spacing: 2;
 }
+
 .estimate-main .estimate-body-text,
 .estimate-main .estimate-validation-text {
     -fx-text-fill: #4c647a;
     -fx-font-size: 12;
     -fx-line-spacing: 3;
 }
+
 .estimate-main .estimate-table {
     -fx-background-color: white;
     -fx-border-color: #dce7f2;
@@ -94,24 +113,91 @@
     -fx-background-radius: 6;
     -fx-padding: 1;
 }
+
 .estimate-main .estimate-table .column-header-background,
 .estimate-main .estimate-table .column-header,
-.estimate-main .estimate-table .filler { -fx-background-color: #edf4fb; }
+.estimate-main .estimate-table .filler {
+    -fx-background-color: #edf4fb;
+}
+
 .estimate-main .estimate-table .column-header .label {
     -fx-text-fill: #224d72;
     -fx-font-size: 12;
     -fx-font-weight: bold;
 }
+
 .estimate-main .estimate-table .table-cell {
     -fx-text-fill: #233e57;
     -fx-font-size: 12;
     -fx-padding: 5 8;
 }
+
 .estimate-main .estimate-table .table-row-cell {
     -fx-background-color: white;
     -fx-border-color: transparent transparent #edf2f7 transparent;
 }
-.estimate-main .estimate-table .table-row-cell:odd { -fx-background-color: #fbfdff; }
-.estimate-main .estimate-table .table-row-cell:hover { -fx-background-color: #edf6ff; }
-.estimate-main .estimate-table .table-row-cell:selected { -fx-background-color: #b7d6ee; }
-.estimate-main .estimate-table .table-row-cell:selected .table-cell { -fx-text-fill: black; }
+
+.estimate-main .estimate-table .table-row-cell:odd {
+    -fx-background-color: #fbfdff;
+}
+
+.estimate-main .estimate-table .table-row-cell:hover {
+    -fx-background-color: #edf6ff;
+}
+
+.estimate-main .estimate-table .table-row-cell:selected {
+    -fx-background-color: #b7d6ee;
+}
+
+.estimate-main .estimate-table .table-row-cell:selected .table-cell {
+    -fx-text-fill: black;
+}
+
+/* Gewichtsbalken */
+.estimate-main .estimate-weight-bar {
+    -fx-pref-height: 10;
+    -fx-min-height: 10;
+    -fx-max-height: 10;
+}
+
+.estimate-main .estimate-weight-bar > .track {
+    -fx-background-color: #e7eff7;
+    -fx-background-insets: 0;
+    -fx-background-radius: 5;
+}
+
+.estimate-main .estimate-weight-bar > .bar {
+    -fx-background-color: #0b68b4;
+    -fx-background-insets: 0;
+    -fx-background-radius: 5;
+    -fx-padding: 5;
+}
+
+/* Button zum Auf- und Zuklappen der Methodentabelle */
+.estimate-main .estimate-detail-button {
+    -fx-background-color: #ebf3fc;
+    -fx-background-radius: 10;
+    -fx-border-color: #c5dcf4;
+    -fx-border-radius:10;
+    -fx-padding: 12 16;
+    -fx-text-fill: #07559d;
+    -fx-font-size: 18;
+    -fx-font-weight: normal;
+    -fx-graphic-text-gap: 10;
+    -fx-cursor: hand;
+}
+
+.estimate-main .estimate-detail-button:hover {
+    -fx-background-color: #e0effc;
+}
+
+.estimate-main .estimate-detail-button:focused {
+    -fx-border-color: #1670ba;
+}
+
+.estimate-main .estimate-detail-icon {
+    -fx-fill: transparent;
+    -fx-stroke: #07559d;
+    -fx-stroke-width: 1.5;
+    -fx-stroke-line-cap: round;
+}

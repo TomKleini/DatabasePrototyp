@@ -17,10 +17,14 @@ import java.util.function.Function;
 
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.ListChangeListener;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
@@ -28,27 +32,14 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TitledPane;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.Priority;
-import javafx.scene.Node;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 
-/**
- * Kombinierte Schätzung der Brennstellen aus mehreren Bezugsgrößen.
- *
- * Für jede Bezugsgröße wird eine eigene Formel gerechnet (beste Methode
- * laut Prognosefehler). Die Einzelschätzungen werden gewichtet gemittelt:
- *
- *   Brennstellen = Σ w_i · ŷ_i
- *   w_i = (1 / F_i²) / Σ (1 / F_j²)      F = Prognosefehler in %
- *
- * Genauere Bezugsgrößen bekommen so mehr Gewicht. Fehlt beim neuen Schiff
- * ein Wert, wird nur mit den vorhandenen gerechnet.
- *
- * Eigenständige Karte, lädt ihre Daten über MatrixRepository.
- */
 public class KombiSchaetzungCard extends VBox {
 
     private static final DecimalFormat ZAHL = format("#,##0.##");
@@ -91,7 +82,6 @@ public class KombiSchaetzungCard extends VBox {
                             + "nicht für ein Angebot, nur zur Analyse.")
     );
 
-    /** Formel einer Bezugsgröße. */
     private record Formel(
             Bezug bezug,
             int n,
@@ -118,23 +108,6 @@ public class KombiSchaetzungCard extends VBox {
     ) {
     }
 
-    private final MatrixRepository repository = new MatrixRepository();
-    private List<MatrixProjekt> projekte = List.of();
-
-    private final ComboBox<Basis> basisAuswahl = new ComboBox<>();
-    private final Map<Bezug, CheckBox> auswahl = new LinkedHashMap<>();
-    private final Map<Bezug, TextField> eingaben = new LinkedHashMap<>();
-    private final TableView<Zeile> tabelle = new TableView<>();
-    private final Label ergebnis = new Label();
-    private final Label ergebnisHinweis = new Label();
-    private final Label pruefung = new Label();
-    private final GridPane kopfRaster = new GridPane();
-    private final VBox ersteSchaetzung = new VBox(16);
-    private boolean schmaleAnsicht;
-    private final SchaetzungsVergleichCard methodenVergleich = new SchaetzungsVergleichCard();
-    private final SchaetzungsVergleichCard schiffstypVergleich = new SchaetzungsVergleichCard(true);
-
-    /** Ein altes Schiff im Ähnlichkeits-Ranking. */
     private record Aehnlich(
             int rang,
             String schiff,
@@ -150,6 +123,22 @@ public class KombiSchaetzungCard extends VBox {
 
     private static final int TOP_AEHNLICH = 5;
 
+    private final MatrixRepository repository = new MatrixRepository();
+    private List<MatrixProjekt> projekte = List.of();
+
+    private final ComboBox<Basis> basisAuswahl = new ComboBox<>();
+    private final Map<Bezug, CheckBox> auswahl = new LinkedHashMap<>();
+    private final Map<Bezug, TextField> eingaben = new LinkedHashMap<>();
+    private final TableView<Zeile> tabelle = new TableView<>();
+    private final Label ergebnis = new Label();
+    private final Label ergebnisHinweis = new Label();
+    private final VBox gewichtUebersicht = new VBox(12);
+    private final Label pruefung = new Label();
+    private final GridPane kopfRaster = new GridPane();
+    private final VBox ersteSchaetzung = new VBox(16);
+    private boolean schmaleAnsicht;
+    private final SchaetzungsVergleichCard methodenVergleich = new SchaetzungsVergleichCard();
+    private final SchaetzungsVergleichCard schiffstypVergleich = new SchaetzungsVergleichCard(true);
     private final TableView<Aehnlich> aehnlichTabelle = new TableView<>();
     private final Label aehnlichHinweis = new Label();
 
@@ -172,11 +161,14 @@ public class KombiSchaetzungCard extends VBox {
         eingabeRaster.setHgap(12);
         eingabeRaster.setVgap(12);
         eingabeRaster.getStyleClass().add("estimate-input-grid");
+
         ColumnConstraints bezugSpalte = new ColumnConstraints();
         bezugSpalte.setPercentWidth(58);
+
         ColumnConstraints wertSpalte = new ColumnConstraints();
         wertSpalte.setPercentWidth(42);
         wertSpalte.setHgrow(Priority.ALWAYS);
+
         eingabeRaster.getColumnConstraints().setAll(bezugSpalte, wertSpalte);
         eingabeRaster.addRow(0, feldLabel("Verwenden"), feldLabel("Neues Schiff"));
 
@@ -187,6 +179,7 @@ public class KombiSchaetzungCard extends VBox {
             box.setWrapText(true);
             box.setId("estimate-use-" + b.schluessel());
             box.setOnAction(event -> neuRechnen());
+
             if (b.warnung() != null) {
                 Tooltip.install(box, new Tooltip(b.warnung()));
                 box.setText(box.getText() + "  ⚠");
@@ -212,9 +205,11 @@ public class KombiSchaetzungCard extends VBox {
         ergebnis.getStyleClass().add("estimate-result-value");
         ergebnis.setWrapText(true);
         ergebnis.setText("–");
+
         ergebnisHinweis.setWrapText(true);
         ergebnisHinweis.getStyleClass().add("estimate-result-note");
         ergebnisHinweis.setText("Werte des neuen Schiffs eingeben, um die Brennstellen zu schätzen.");
+
         pruefung.setId("estimate-validation");
         pruefung.setWrapText(true);
         pruefung.getStyleClass().add("estimate-validation-text");
@@ -229,52 +224,119 @@ public class KombiSchaetzungCard extends VBox {
 
         Label aehnlichTitel = new Label("Ähnlichste Schiffe zu den eingegebenen Werten");
         aehnlichTitel.getStyleClass().add("estimate-section-title");
+
         aehnlichHinweis.setWrapText(true);
         aehnlichHinweis.getStyleClass().add("estimate-body-text");
+
         aehnlichTabelle.setPlaceholder(new Label("Werte des neuen Schiffs eingeben."));
         aehnlichTabelle.setMinWidth(0);
         aehnlichTabelle.setId("estimate-similar-ships");
         aehnlichTabelle.getStyleClass().add("estimate-table");
+
         tabelle.setMinWidth(0);
         tabelle.setId("estimate-methods");
         tabelle.getStyleClass().add("estimate-table");
 
-        Label eingabeHinweis = beschreibung("Ausgewählte Größen verwenden. Die Schätzung aktualisiert sich bei Eingabe automatisch.");
+        Label eingabeHinweis = beschreibung(
+                "Ausgewählte Größen verwenden. Die Schätzung aktualisiert sich bei Eingabe automatisch.");
         VBox eingabeKarte = karte("Projektdaten", "Bezugsgrößen für das neue Schiff festlegen.",
                 basisFeld, eingabeRaster, eingabeHinweis);
+
         Label ergebnisTitel = feldLabel("Geschätzte Brennstellen");
         ergebnisTitel.getStyleClass().add("estimate-result-title");
         VBox ergebnisFeld = new VBox(7, ergebnisTitel, ergebnis, ergebnisHinweis);
         ergebnisFeld.getStyleClass().add("estimate-result-panel");
-        VBox prognoseKarte = karte("Schätzung", "Gewichtetes Ergebnis der verwendbaren Bezugsgrößen.",
-                ergebnisFeld, abschnitt("Gewichtung"), erklaerung);
-        kopfRaster.setHgap(16); kopfRaster.setVgap(16);
+
+        gewichtUebersicht.setId("estimate-weights");
+        gewichtUebersicht.setMinWidth(0);
+        zeigeGewichte();
+        tabelle.getItems().addListener((ListChangeListener<Zeile>) aenderung -> zeigeGewichte());
+
+        SVGPath infoSymbol = new SVGPath();
+        infoSymbol.setContent(
+                "M10 1 A9 9 0 1 0 10 19 A9 9 0 1 0 10 1 M10 5.5 V5.6 M10 9 V14"
+        );
+        infoSymbol.getStyleClass().add("estimate-detail-icon");
+
+        Button methodenButton = new Button("Methoden und Details", infoSymbol);
+        methodenButton.setId("estimate-details-toggle");
+        methodenButton.getStyleClass().add("estimate-detail-button");
+        methodenButton.setWrapText(true);
+        methodenButton.setMinWidth(0);
+        methodenButton.setAccessibleText("Methoden und Details anzeigen");
+
+        Region kopfAbstand = new Region();
+        HBox.setHgrow(kopfAbstand, Priority.ALWAYS);
+
+        HBox prognoseKopf = new HBox(
+                10, abschnitt("Schätzung"), kopfAbstand, methodenButton
+        );
+        prognoseKopf.setAlignment(Pos.CENTER_LEFT);
+
+        VBox prognoseKarte = new VBox(
+                12,
+                prognoseKopf,
+                beschreibung("Gewichtetes Ergebnis der verwendbaren Bezugsgrößen."),
+                ergebnisFeld,
+                abschnitt("Gewichtung der Bezugsgrößen"),
+                gewichtUebersicht
+        );
+        prognoseKarte.setMinWidth(0);
+        prognoseKarte.getStyleClass().add("estimate-card");
+
+        kopfRaster.setHgap(16);
+        kopfRaster.setVgap(16);
         kopfRaster.setMinWidth(0);
         kopfRaster.getChildren().addAll(eingabeKarte, prognoseKarte);
         ordneKopfAn(900);
-        ersteSchaetzung.widthProperty().addListener((o,alt,neu) -> ordneKopfAn(neu.doubleValue()));
+        ersteSchaetzung.widthProperty().addListener((o, alt, neu) -> ordneKopfAn(neu.doubleValue()));
 
-        VBox methodenKarte = karte("Methoden und Beiträge", "Formeln, Fehlerkennzahlen, Eingaben und Gewichte. Weitere Spalten durch horizontales Scrollen anzeigen.", tabelle);
-        VBox pruefKarte = karte("Prüfung der kombinierten Schätzung", "Vergleich auf gemeinsamen historischen Projekten.", pruefung);
+        VBox methodenKarte = karte(
+                "Methoden und Beiträge",
+                "Formeln, Fehlerkennzahlen, Eingaben und Gewichte. "
+                        + "Weitere Spalten durch horizontales Scrollen anzeigen.",
+                erklaerung, tabelle);
+        methodenKarte.setId("estimate-methods-details");
+        methodenKarte.setVisible(false);
+        methodenKarte.managedProperty().bind(methodenKarte.visibleProperty());
+
+        methodenButton.setOnAction(event -> {
+            boolean anzeigen = !methodenKarte.isVisible();
+            methodenKarte.setVisible(anzeigen);
+            methodenButton.setAccessibleText(anzeigen
+                    ? "Methoden und Details ausblenden"
+                    : "Methoden und Details anzeigen");
+        });
+
+        VBox pruefKarte = karte("Prüfung der kombinierten Schätzung",
+                "Vergleich auf gemeinsamen historischen Projekten.", pruefung);
+
         VBox referenzKarte = new VBox(12, aehnlichTitel, aehnlichTabelle, aehnlichHinweis);
         referenzKarte.setMinWidth(0);
         referenzKarte.getStyleClass().add("estimate-card");
+
         ersteSchaetzung.getStyleClass().add("estimate-main");
         ersteSchaetzung.setId("estimate-main");
         ersteSchaetzung.setMinWidth(0);
         ersteSchaetzung.getChildren().addAll(kopfRaster, methodenKarte, pruefKarte, referenzKarte);
+
         var design = KombiSchaetzungCard.class.getResource("/org/example/schaetzung.css");
-        if (design != null) ersteSchaetzung.getStylesheets().add(design.toExternalForm());
-        else System.err.println("Design-Datei fehlt: src/main/resources/org/example/schaetzung.css");
+        if (design != null) {
+            ersteSchaetzung.getStylesheets().add(design.toExternalForm());
+        } else {
+            System.err.println("Design-Datei fehlt: src/main/resources/org/example/schaetzung.css");
+        }
 
         TitledPane vergleichBereich = new TitledPane("Zusätzlicher Methodenvergleich", methodenVergleich);
         vergleichBereich.setId("zusaetzlicher-methodenvergleich");
         vergleichBereich.setExpanded(false);
         vergleichBereich.setAnimated(false);
+
         TitledPane typVergleichBereich = new TitledPane("Vergleich mit Schiffstyp", schiffstypVergleich);
         typVergleichBereich.setId("schiffstyp-methodenvergleich");
         typVergleichBereich.setExpanded(false);
         typVergleichBereich.setAnimated(false);
+
         getChildren().addAll(ersteSchaetzung, vergleichBereich, typVergleichBereich);
     }
 
@@ -289,15 +351,10 @@ public class KombiSchaetzungCard extends VBox {
         neuRechnen();
     }
 
-    /** Daten direkt setzen (z. B. für Tests). */
     void setProjekte(List<MatrixProjekt> projekte) {
         this.projekte = projekte == null ? List.of() : projekte;
         neuRechnen();
     }
-
-    // ------------------------------------------------------------------
-    // Rechnen
-    // ------------------------------------------------------------------
 
     private void neuRechnen() {
         List<Formel> formeln = new ArrayList<>();
@@ -307,7 +364,6 @@ public class KombiSchaetzungCard extends VBox {
             }
         }
 
-        // Gewichte für alle Bezugsgrößen mit Prognosefehler (für die Prüfung)
         Map<Bezug, Double> roh = new HashMap<>();
         for (Formel f : formeln) {
             if (f.fehler() != null) {
@@ -315,7 +371,6 @@ public class KombiSchaetzungCard extends VBox {
             }
         }
 
-        // Für das neue Schiff nur Bezugsgrößen mit Eingabe
         double summeRoh = 0;
         for (Formel f : formeln) {
             if (roh.containsKey(f.bezug()) && eingabe(f.bezug()) != null) {
@@ -378,11 +433,15 @@ public class KombiSchaetzungCard extends VBox {
 
         pruefung.setText(pruefText(formeln, roh));
         fuelleAehnlich();
+
         Map<String, Double> vergleichEingaben = new LinkedHashMap<>();
         for (Bezug b : BEZUEGE) {
             Double x = eingabe(b);
-            if (auswahl.get(b).isSelected() && x != null) vergleichEingaben.put(b.schluessel(), x);
+            if (auswahl.get(b).isSelected() && x != null) {
+                vergleichEingaben.put(b.schluessel(), x);
+            }
         }
+
         methodenVergleich.setKontext(projekte, vergleichEingaben,
                 SchaetzungsVergleich.Basis.valueOf(basisAuswahl.getValue().name()));
         schiffstypVergleich.setKontext(projekte, vergleichEingaben,
@@ -418,6 +477,7 @@ public class KombiSchaetzungCard extends VBox {
     private Double brennstellen(MatrixProjekt p) {
         Double ist = p.wert("LIGHTING_POINTS:ist");
         Double soll = p.wert("LIGHTING_POINTS:soll");
+
         return switch (basisAuswahl.getValue()) {
             case IST -> ist;
             case SOLL -> soll;
@@ -425,12 +485,6 @@ public class KombiSchaetzungCard extends VBox {
         };
     }
 
-    /**
-     * Prüft die Kombination fair: Nur alte Schiffe, für die jede verwendete
-     * Formel eine Leave-one-out-Prognose hat. Auf genau diesen Schiffen wird
-     * der Fehler der Kombination mit dem Fehler jeder einzelnen Formel
-     * verglichen.
-     */
     private String pruefText(List<Formel> formeln, Map<Bezug, Double> roh) {
         List<Formel> nutzbar = formeln.stream()
                 .filter(f -> roh.containsKey(f.bezug()))
@@ -440,6 +494,7 @@ public class KombiSchaetzungCard extends VBox {
             return "Für keine Bezugsgröße gibt es genug Schiffe (mindestens 3), "
                     + "um einen Prognosefehler und damit ein Gewicht zu berechnen.";
         }
+
         if (nutzbar.size() == 1) {
             return "Nur eine Bezugsgröße mit Prognosefehler, daher keine Kombination. "
                     + "Gewicht 100 %.";
@@ -450,6 +505,7 @@ public class KombiSchaetzungCard extends VBox {
         for (int i = 0; i < nutzbar.size(); i++) {
             einzelLoo.add(new ArrayList<>());
         }
+
         int anzahl = 0;
 
         for (MatrixProjekt p : projekte) {
@@ -460,6 +516,7 @@ public class KombiSchaetzungCard extends VBox {
 
             double[] prognosen = new double[nutzbar.size()];
             boolean alle = true;
+
             for (int i = 0; i < nutzbar.size(); i++) {
                 Double prognose = nutzbar.get(i).looPrognosen().get(p.schiff());
                 if (prognose == null || !Double.isFinite(prognose)) {
@@ -468,6 +525,7 @@ public class KombiSchaetzungCard extends VBox {
                 }
                 prognosen[i] = prognose;
             }
+
             if (!alle) {
                 continue;
             }
@@ -493,9 +551,11 @@ public class KombiSchaetzungCard extends VBox {
         } else {
             RegressionRechenweg.Fehlerkennzahlen kombiKennzahlen =
                     RegressionRechenweg.fehlerkennzahlen(kombiLoo);
+
             int besteIndex = 0;
             List<RegressionRechenweg.Fehlerkennzahlen> einzelKennzahlen = einzelLoo.stream()
                     .map(RegressionRechenweg::fehlerkennzahlen).toList();
+
             for (int i = 1; i < nutzbar.size(); i++) {
                 Double fehler = einzelKennzahlen.get(i).mape();
                 Double bisher = einzelKennzahlen.get(besteIndex).mape();
@@ -503,22 +563,28 @@ public class KombiSchaetzungCard extends VBox {
                     besteIndex = i;
                 }
             }
+
             Double besterEinzel = einzelKennzahlen.get(besteIndex).mape();
             String besteName = nutzbar.get(besteIndex).bezug().name();
 
             sb.append("Prüfung auf denselben ").append(anzahl)
                     .append(" alten Schiffen (alle mit jeder gewählten Bezugsgröße): ");
+
             for (int i = 0; i < nutzbar.size(); i++) {
                 sb.append('\n').append(nutzbar.get(i).bezug().name()).append(" allein: ")
                         .append(fehlerText(einzelKennzahlen.get(i)));
             }
+
             sb.append("\nKombination: ").append(fehlerText(kombiKennzahlen));
+
             Double kombiFehler = kombiKennzahlen.mape();
             if (kombiFehler != null && besterEinzel != null) {
                 sb.append(kombiFehler < besterEinzel
                         ? "\nIn dieser näherungsweisen Prüfung hat die Kombination den kleineren MAPE."
-                        : "\nIn dieser näherungsweisen Prüfung hat die Kombination keinen kleineren MAPE als " + besteName + ".");
+                        : "\nIn dieser näherungsweisen Prüfung hat die Kombination keinen kleineren MAPE als "
+                        + besteName + ".");
             }
+
             sb.append("\nNäherung: Methodenauswahl und Gewichte stammen aus allen Schiffen. "
                     + "Dies ist noch keine unabhängig geprüfte Prognosegüte.");
         }
@@ -554,20 +620,6 @@ public class KombiSchaetzungCard extends VBox {
         return wert == null ? "–" : ZAHL.format(wert);
     }
 
-    // ------------------------------------------------------------------
-    // Ähnlichste Schiffe
-    // ------------------------------------------------------------------
-
-    /**
-     * Rangliste der alten Schiffe, die dem neuen Schiff am ähnlichsten sind.
-     *
-     * Je Bezugsgröße: relative Abweichung = |x_alt − x_neu| / x_neu
-     * Abstand    = √(Mittelwert der quadrierten Abweichungen)
-     * Ähnlichkeit = 100 % × (1 − Abstand), mindestens 0 %
-     *
-     * Schiffe, die mehr der eingegebenen Werte haben, stehen vor Schiffen
-     * mit weniger Werten; innerhalb davon entscheidet der Abstand.
-     */
     private void fuelleAehnlich() {
         List<Bezug> genutzt = BEZUEGE.stream()
                 .filter(b -> auswahl.get(b).isSelected() && eingabe(b) != null)
@@ -620,9 +672,9 @@ public class KombiSchaetzungCard extends VBox {
 
         List<Aehnlich> zeilen = new ArrayList<>();
         int rang = 1;
+
         for (Kandidat k : kandidaten.subList(0, Math.min(TOP_AEHNLICH, kandidaten.size()))) {
             Double ist = k.p().wert("LIGHTING_POINTS:ist");
-            Double soll = k.p().wert("LIGHTING_POINTS:soll");
             Double bs = brennstellen(k.p());
             String quelle = bs == null ? "" : basisAuswahl.getValue() == Basis.SOLL ? "Soll"
                     : ist != null ? "Ist" : "Soll";
@@ -671,10 +723,6 @@ public class KombiSchaetzungCard extends VBox {
         aehnlichTabelle.getColumns().setAll(spalten);
     }
 
-    // ------------------------------------------------------------------
-    // Tabelle
-    // ------------------------------------------------------------------
-
     private void baueTabelle() {
         tabelle.getColumns().setAll(List.of(
                 textSpalte("Bezugsgröße", Zeile::bezug, 150),
@@ -682,10 +730,14 @@ public class KombiSchaetzungCard extends VBox {
                 textSpalte("Beste Methode", Zeile::methode, 170),
                 textSpalte("Formel", Zeile::formel, 250),
                 zahlSpalte("MAPE (%)", Zeile::fehler, PROZENT, 110),
-                zahlSpalte("MdAPE (%)", z -> z.kennzahlen() == null ? null : z.kennzahlen().mdape(), PROZENT, 110),
-                zahlSpalte("MAE (Brennstellen)", z -> z.kennzahlen() == null ? null : z.kennzahlen().mae(), ZAHL, 155),
-                zahlSpalte("Max. Fehler (Brennstellen)", z -> z.kennzahlen() == null ? null : z.kennzahlen().maxAbsolut(), ZAHL, 185),
-                zahlSpalte("Max. Fehler (%)", z -> z.kennzahlen() == null ? null : z.kennzahlen().maxProzent(), PROZENT, 135),
+                zahlSpalte("MdAPE (%)", z -> z.kennzahlen() == null ? null : z.kennzahlen().mdape(),
+                        PROZENT, 110),
+                zahlSpalte("MAE (Brennstellen)", z -> z.kennzahlen() == null ? null : z.kennzahlen().mae(),
+                        ZAHL, 155),
+                zahlSpalte("Max. Fehler (Brennstellen)",
+                        z -> z.kennzahlen() == null ? null : z.kennzahlen().maxAbsolut(), ZAHL, 185),
+                zahlSpalte("Max. Fehler (%)",
+                        z -> z.kennzahlen() == null ? null : z.kennzahlen().maxProzent(), PROZENT, 135),
                 textSpalte("LOO-Prüfumfang", z -> z.kennzahlen() == null ? ""
                         : z.kennzahlen().nAbsolut() + "/" + z.kennzahlen().nGesamt()
                         + " absolut; " + z.kennzahlen().nProzent() + " prozentual", 240),
@@ -695,6 +747,7 @@ public class KombiSchaetzungCard extends VBox {
                         PROZENT, 90),
                 zahlSpalte("Beitrag", Zeile::beitrag, ZAHL, 100)
         ));
+
         tabelle.setRowFactory(t -> new TableRow<>() {
             @Override
             protected void updateItem(Zeile item, boolean empty) {
@@ -703,6 +756,7 @@ public class KombiSchaetzungCard extends VBox {
                         ? "-fx-font-weight: bold;" : "");
             }
         });
+
         tabelle.setPlaceholder(new Label("Mindestens eine Bezugsgröße auswählen."));
     }
 
@@ -720,12 +774,14 @@ public class KombiSchaetzungCard extends VBox {
         if (text == null || text.isBlank()) {
             return null;
         }
+
         String s = text.trim().replace(" ", "");
         if (s.contains(",")) {
             s = s.replace(".", "").replace(',', '.');
         } else if (s.matches("[1-9]\\d{0,2}(\\.\\d{3})+")) {
             s = s.replace(".", "");
         }
+
         try {
             double wert = Double.parseDouble(s);
             return Double.isFinite(wert) && wert > 0 ? wert : null;
@@ -734,26 +790,64 @@ public class KombiSchaetzungCard extends VBox {
         }
     }
 
-    // ------------------------------------------------------------------
-    // Hilfsmethoden
-    // ------------------------------------------------------------------
+    /** Zeigt nur bereits berechnete Werte der vorhandenen Methodentabelle. */
+    private void zeigeGewichte() {
+        gewichtUebersicht.getChildren().clear();
 
-    /** Ausschließlich Anordnung: dieselben Steuerelemente werden umpositioniert. */
+        for (Zeile zeile : tabelle.getItems()) {
+            if (zeile.summe() || zeile.gewicht() == null || !Double.isFinite(zeile.gewicht())) {
+                continue;
+            }
+
+            String prozent = PROZENT.format(zeile.gewicht() * 100) + " %";
+            Label name = feldLabel(zeile.bezug());
+            Label wert = feldLabel(prozent);
+            Region abstand = new Region();
+            HBox.setHgrow(abstand, Priority.ALWAYS);
+
+            HBox beschriftung = new HBox(8, name, abstand, wert);
+            beschriftung.setAlignment(Pos.CENTER_LEFT);
+
+            ProgressBar balken = new ProgressBar(zeile.gewicht());
+            balken.setMaxWidth(Double.MAX_VALUE);
+            balken.setAccessibleText(zeile.bezug() + ": Gewicht " + prozent);
+            balken.getStyleClass().add("estimate-weight-bar");
+
+            Label beitrag = beschreibung("Einzelschätzung: " + ZAHL.format(zeile.schaetzung())
+                    + " · Gewichteter Beitrag: " + ZAHL.format(zeile.beitrag()) + " Brennstellen");
+
+            gewichtUebersicht.getChildren().add(new VBox(5, beschriftung, balken, beitrag));
+        }
+
+        if (gewichtUebersicht.getChildren().isEmpty()) {
+            gewichtUebersicht.getChildren().add(
+                    beschreibung("Gewichte erscheinen, sobald eine Einzelschätzung möglich ist."));
+        }
+    }
+
     private void ordneKopfAn(double breite) {
         boolean schmal = breite < 760;
+
         if (kopfRaster.getColumnConstraints().isEmpty() || schmal != schmaleAnsicht) {
             schmaleAnsicht = schmal;
+
             ColumnConstraints links = new ColumnConstraints();
             links.setPercentWidth(schmal ? 100 : 44);
             kopfRaster.getColumnConstraints().setAll(links);
+
             if (!schmal) {
                 ColumnConstraints rechts = new ColumnConstraints();
                 rechts.setPercentWidth(56);
                 kopfRaster.getColumnConstraints().add(rechts);
             }
+
             GridPane.setConstraints(kopfRaster.getChildren().get(0), 0, 0);
-            GridPane.setConstraints(kopfRaster.getChildren().get(1), schmal ? 0 : 1, schmal ? 1 : 0);
-            for (Node node : kopfRaster.getChildren()) GridPane.setHgrow(node, Priority.ALWAYS);
+            GridPane.setConstraints(kopfRaster.getChildren().get(1),
+                    schmal ? 0 : 1, schmal ? 1 : 0);
+
+            for (Node node : kopfRaster.getChildren()) {
+                GridPane.setHgrow(node, Priority.ALWAYS);
+            }
         }
     }
 
@@ -766,23 +860,23 @@ public class KombiSchaetzungCard extends VBox {
     }
 
     private static Label abschnitt(String text) {
-        Label label = new Label(text); label.setWrapText(true);
-        label.getStyleClass().add("estimate-section-title"); return label;
+        Label label = new Label(text);
+        label.setWrapText(true);
+        label.getStyleClass().add("estimate-section-title");
+        return label;
     }
 
     private static Label beschreibung(String text) {
-        Label label = new Label(text); label.setWrapText(true);
-        label.getStyleClass().add("estimate-description"); return label;
+        Label label = new Label(text);
+        label.setWrapText(true);
+        label.getStyleClass().add("estimate-description");
+        return label;
     }
 
     private static Label feldLabel(String text) {
-        Label label = new Label(text); label.setWrapText(true);
-        label.getStyleClass().add("estimate-field-label"); return label;
-    }
-
-    private static Label fett(String text) {
         Label label = new Label(text);
-        label.setStyle("-fx-font-weight: bold;");
+        label.setWrapText(true);
+        label.getStyleClass().add("estimate-field-label");
         return label;
     }
 

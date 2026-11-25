@@ -218,6 +218,7 @@ public class KabelKalkulationView extends ScrollPane {
         addColumn(dataTable, "Angebot (km)", p -> format(p.kabelAngebot()));
         addColumn(dataTable, "Real (km)", p -> format(p.kabelReal()));
         addColumn(dataTable, "Real ggü. Angebot", KabelKalkulationView::abweichung);
+        addColumn(dataTable, "Bezugsjahr", p -> p.hatJahr() ? p.bezugsjahr() + " (" + p.jahrQuelle() + ")" : "⚠ ohne Jahr");
 
         dataTable.setPrefHeight(350);
         TableAutoSize.install(dataTable);

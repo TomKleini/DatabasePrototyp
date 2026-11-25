@@ -33,6 +33,7 @@ import javafx.util.Duration;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -51,13 +52,22 @@ import java.util.function.Function;
  * Es wird ZWEIMAL gerechnet:
  *   Angebot (Soll) aus cable_offer_km
  *   Real    (Ist)  aus cable_actual_km
+ *
+ * ZEITLICHE HOCHRECHNUNG:
+ * Die Kabellängen alter Projekte werden vor der Regression auf das
+ * aktuelle Jahr hochgerechnet:
+ *   Faktor = (1 + Steigerung pro 10 Jahre) ^ ((aktuelles Jahr − Bezugsjahr) / 10)
+ * Bezugsjahr: Baubeginn, sonst Bauende Ist, sonst Bauende Soll.
+ * Projekte ohne Jahr werden markiert und wahlweise ausgeschlossen.
  */
 public class KabelSchaetzungCard extends VBox {
 
     private static final DecimalFormat ZAHL = format("#,##0.#");
     private static final DecimalFormat PROZENT = format("0.0");
+    private static final DecimalFormat FAKTOR = format("0.00");
     private static final int TOP_AEHNLICH = 5;
     private static final int WENIGE_SCHIFFE = 6;
+    private static final double STANDARD_STEIGERUNG = 25;
 
     private record Bezug(String name, String einheit, String schluessel,
                          boolean standard, String warnung) {
@@ -95,16 +105,27 @@ public class KabelSchaetzungCard extends VBox {
                             List<Gewicht> gewichte, int minN) {
     }
 
-    private record Aehnlich(int rang, String schiff, double aehnlichkeit,
-                            String verglichen, Double angebot, Double real,
+    private record Aehnlich(int rang, String schiff, String jahr, Double faktor,
+                            double aehnlichkeit, String verglichen,
+                            Double angebot, Double real,
                             Double hochAngebot, Double hochReal) {
     }
 
     private final KabelRepository repository = new KabelRepository();
+    private List<KabelProjekt> alleProjekte = List.of();
+    /** Projekte, die in die Rechnung eingehen (ggf. ohne die ohne Jahr). */
     private List<KabelProjekt> projekte = List.of();
 
     private final Map<Bezug, CheckBox> auswahl = new LinkedHashMap<>();
     private final Map<Bezug, TextField> eingaben = new LinkedHashMap<>();
+
+    // Zeitliche Hochrechnung
+    private final CheckBox hochrechnen =
+            new CheckBox("Kabellängen auf heutiges Jahr hochrechnen");
+    private final TextField steigerungFeld = new TextField();
+    private final CheckBox ohneJahrAusschliessen =
+            new CheckBox("Projekte ohne Baujahr ausschließen");
+    private final Label zeitHinweis = new Label();
 
     private final Map<Ziel, ErgebnisKachel> kacheln = new LinkedHashMap<>();
     private final Map<Ziel, VBox> gewichtBoxen = new LinkedHashMap<>();
@@ -162,10 +183,43 @@ public class KabelSchaetzungCard extends VBox {
             eingabeRaster.addRow(zeile++, box, feld);
         }
 
+        // ---------- Zeitliche Hochrechnung ----------
+        hochrechnen.setSelected(true);
+        hochrechnen.setWrapText(true);
+        hochrechnen.setOnAction(e -> {
+            steigerungFeld.setDisable(!hochrechnen.isSelected());
+            neuRechnen();
+        });
+
+        steigerungFeld.setText(PROZENT.format(STANDARD_STEIGERUNG));
+        steigerungFeld.setPrefColumnCount(5);
+        steigerungFeld.setMaxWidth(90);
+        steigerungFeld.textProperty().addListener((o, alt, neu) -> verzoegerung.playFromStart());
+
+        Label steigerungLabel = new Label("% mehr Kabel pro 10 Jahre");
+        HBox steigerungZeile = new HBox(8, steigerungFeld, steigerungLabel);
+        steigerungZeile.setAlignment(Pos.CENTER_LEFT);
+
+        ohneJahrAusschliessen.setWrapText(true);
+        ohneJahrAusschliessen.setOnAction(e -> {
+            filterNachJahr();
+            neuRechnen();
+        });
+
+        zeitHinweis.setWrapText(true);
+        zeitHinweis.setMinWidth(0);
+        zeitHinweis.getStyleClass().add("hint");
+
+        VBox zeitBereich = new VBox(8,
+                abschnitt("Zeitliche Anpassung"),
+                hochrechnen, steigerungZeile, ohneJahrAusschliessen, zeitHinweis);
+        zeitBereich.getStyleClass().add("kabel-zeit-box");
+
         VBox eingabeKarte = karte("Projektdaten",
                 "Bezugsgrößen für das neue Schiff festlegen.",
                 eingabeRaster,
-                beschreibung("Die Schätzung aktualisiert sich bei Eingabe automatisch."));
+                beschreibung("Die Schätzung aktualisiert sich bei Eingabe automatisch."),
+                zeitBereich);
 
         // ---------- Ergebnis ----------
         GridPane ergebnisRaster = zweiSpalten();
@@ -235,12 +289,85 @@ public class KabelSchaetzungCard extends VBox {
     /** null = alle. Gleiche Signatur wie KombiSchaetzungCard.setFilter. */
     public void setFilter(String kategorie, String schiffstyp, boolean nurRelevant) {
         try {
-            projekte = repository.lade(kategorie, schiffstyp, nurRelevant);
+            alleProjekte = repository.lade(kategorie, schiffstyp, nurRelevant);
         } catch (RuntimeException e) {
-            projekte = List.of();
+            alleProjekte = List.of();
             datenHinweis.setText("Fehler beim Laden: " + e.getMessage());
         }
+        filterNachJahr();
         neuRechnen();
+    }
+
+    private void filterNachJahr() {
+        projekte = ohneJahrAusschliessen.isSelected()
+                ? alleProjekte.stream().filter(KabelProjekt::hatJahr).toList()
+                : alleProjekte;
+    }
+
+    // ============================================================
+    // Zeitliche Hochrechnung
+    // ============================================================
+
+    /** Steigerung pro 10 Jahre als Dezimalzahl (25 % -> 0,25). */
+    private double steigerung() {
+        String text = steigerungFeld.getText() == null ? "" : steigerungFeld.getText().trim();
+        text = text.replace("%", "").replace(" ", "").replace(',', '.');
+        try {
+            double w = Double.parseDouble(text);
+            return Double.isFinite(w) && w > -100 ? w / 100 : STANDARD_STEIGERUNG / 100;
+        } catch (NumberFormatException e) {
+            return STANDARD_STEIGERUNG / 100;
+        }
+    }
+
+    /** Faktor, mit dem die Kabellänge eines alten Projekts multipliziert wird. */
+    private double zeitFaktor(KabelProjekt p) {
+        if (!hochrechnen.isSelected() || !p.hatJahr()) {
+            return 1;
+        }
+        int jahre = Math.max(0, Year.now().getValue() - p.bezugsjahr());
+        return Math.pow(1 + steigerung(), jahre / 10.0);
+    }
+
+    /** Kabellänge eines alten Projekts, ggf. auf heute hochgerechnet. */
+    private Double kabel(KabelProjekt p, Ziel ziel) {
+        Double roh = p.wert(ziel.schluessel);
+        return positiv(roh) ? roh * zeitFaktor(p) : null;
+    }
+
+    private void zeigeZeitHinweis() {
+        long mitJahr = alleProjekte.stream().filter(KabelProjekt::hatJahr).count();
+        long ohneJahr = alleProjekte.size() - mitJahr;
+        long start = zaehle("Baubeginn");
+        long endeIst = zaehle("Bauende Ist");
+        long endeSoll = zaehle("Bauende Soll");
+
+        double proJahr = (Math.pow(1 + steigerung(), 0.1) - 1) * 100;
+
+        StringBuilder sb = new StringBuilder();
+        if (hochrechnen.isSelected()) {
+            sb.append("Entspricht ca. ").append(FAKTOR.format(proJahr))
+                    .append(" % pro Jahr, hochgerechnet auf ").append(Year.now().getValue())
+                    .append(". ");
+        } else {
+            sb.append("Hochrechnung aus: Kabellängen werden unverändert verwendet. ");
+        }
+        sb.append("Bezugsjahr: ").append(start).append("× Baubeginn, ")
+                .append(endeIst).append("× Bauende Ist, ")
+                .append(endeSoll).append("× Bauende Soll.");
+
+        if (ohneJahr > 0) {
+            sb.append(" ⚠ ").append(ohneJahr).append(ohneJahr == 1 ? " Projekt" : " Projekte")
+                    .append(" ohne Baujahr")
+                    .append(ohneJahrAusschliessen.isSelected()
+                            ? " (ausgeschlossen)."
+                            : " (unverändert verwendet, in der Tabelle markiert).");
+        }
+        zeitHinweis.setText(sb.toString());
+    }
+
+    private long zaehle(String quelle) {
+        return alleProjekte.stream().filter(p -> quelle.equals(p.jahrQuelle())).count();
     }
 
     // ============================================================
@@ -254,6 +381,7 @@ public class KabelSchaetzungCard extends VBox {
             zeigeGewichte(z, e);
         }
         zeigeFaktor();
+        zeigeZeitHinweis();
         fuelleAehnlich();
 
         long angebot = projekte.stream().filter(p -> positiv(p.kabelAngebot())).count();
@@ -273,7 +401,7 @@ public class KabelSchaetzungCard extends VBox {
             List<RegressionRechenweg.Punkt> punkte = new ArrayList<>();
             for (KabelProjekt p : projekte) {
                 Double x = p.wert(b.schluessel());
-                Double y = p.wert(ziel.schluessel);
+                Double y = kabel(p, ziel);
                 if (positiv(x) && positiv(y)) {
                     punkte.add(new RegressionRechenweg.Punkt(p.schiff(), "", x, y));
                 }
@@ -325,7 +453,10 @@ public class KabelSchaetzungCard extends VBox {
         return new Ergebnis(wert, min, max, gewichte, minN);
     }
 
-    /** Median von Real / Angebot über alle Projekte mit beiden Werten. */
+    /**
+     * Median von Real / Angebot über alle Projekte mit beiden Werten.
+     * Unabhängig von der Hochrechnung (beide Werte stammen aus demselben Jahr).
+     */
     private void zeigeFaktor() {
         List<Double> faktoren = new ArrayList<>();
         for (KabelProjekt p : projekte) {
@@ -440,18 +571,26 @@ public class KabelSchaetzungCard extends VBox {
         int rang = 1;
         for (Kandidat k : kandidaten.subList(0, Math.min(TOP_AEHNLICH, kandidaten.size()))) {
             KabelProjekt p = k.p();
-            zeilen.add(new Aehnlich(rang++, p.schiff(),
+            Double angebot = kabel(p, Ziel.ANGEBOT);
+            Double real = kabel(p, Ziel.REAL);
+            String jahr = p.hatJahr() ? String.valueOf(p.bezugsjahr()) : "⚠ ohne Jahr";
+
+            zeilen.add(new Aehnlich(rang++, p.schiff(), jahr,
+                    p.hatJahr() && hochrechnen.isSelected() ? zeitFaktor(p) : null,
                     Math.max(0, 100 * (1 - k.abstand())),
                     k.anzahl() + " von " + genutzt.size(),
-                    p.kabelAngebot(), p.kabelReal(),
-                    positiv(p.kabelAngebot()) ? p.kabelAngebot() * k.faktor() : null,
-                    positiv(p.kabelReal()) ? p.kabelReal() * k.faktor() : null));
+                    angebot, real,
+                    angebot == null ? null : angebot * k.faktor(),
+                    real == null ? null : real * k.faktor()));
         }
 
         aehnlichTabelle.getItems().setAll(zeilen);
         passeHoeheAn(aehnlichTabelle);
-        aehnlichHinweis.setText("„Hochgerechnet“ = Kabellänge des alten Schiffs proportional "
-                + "auf die Größe des neuen umgerechnet (grobe Gegenprobe). Gezeigt werden die "
+        aehnlichHinweis.setText((hochrechnen.isSelected()
+                ? "Angebot und Real sind bereits auf heute hochgerechnet (Spalte „Zeitfaktor“). "
+                : "")
+                + "„Hochgerechnet“ = Kabellänge des alten Schiffs proportional auf die Größe "
+                + "des neuen umgerechnet (grobe Gegenprobe). Gezeigt werden die "
                 + TOP_AEHNLICH + " ähnlichsten von " + kandidaten.size() + " Schiffen.");
     }
 
@@ -459,6 +598,8 @@ public class KabelSchaetzungCard extends VBox {
         aehnlichTabelle.getColumns().setAll(List.of(
                 zahlSpalte("Rang", a -> (double) a.rang(), ZAHL),
                 textSpalte("Schiff", Aehnlich::schiff),
+                textSpalte("Bezugsjahr", Aehnlich::jahr),
+                zahlSpalte("Zeitfaktor", Aehnlich::faktor, FAKTOR),
                 zahlSpalte("Ähnlichkeit %", Aehnlich::aehnlichkeit, PROZENT),
                 textSpalte("Verglichen", Aehnlich::verglichen),
                 zahlSpalte("Angebot (km)", Aehnlich::angebot, ZAHL),
@@ -524,6 +665,9 @@ public class KabelSchaetzungCard extends VBox {
                     ? "Einzelschätzungen " + ZAHL.format(e.min()) + " bis "
                     + ZAHL.format(e.max()) + " km."
                     : "Aus einer Bezugsgröße.";
+            if (hochrechnen.isSelected()) {
+                text += " Auf " + Year.now().getValue() + " hochgerechnet.";
+            }
             if (e.minN() < WENIGE_SCHIFFE) {
                 text += " Weniger als " + WENIGE_SCHIFFE + " Schiffe, nur grobe Richtung.";
             }

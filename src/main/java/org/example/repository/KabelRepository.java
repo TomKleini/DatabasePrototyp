@@ -13,6 +13,12 @@ import java.util.List;
 /**
  * Lädt alle Projekte mit Kabeldaten (Angebot = Soll, Real = Ist)
  * direkt aus der Tabelle projects.
+ *
+ * Bezugsjahr für die zeitliche Hochrechnung (Priorität):
+ *   1. Baubeginn
+ *   2. Bauende Ist
+ *   3. Bauende Soll
+ *   sonst: kein Jahr (wird in der Oberfläche markiert)
  */
 public class KabelRepository {
 
@@ -27,7 +33,9 @@ public class KabelRepository {
             Double breite,
             Double kabelBerechnet,
             Double kabelAngebot,
-            Double kabelReal
+            Double kabelReal,
+            Integer bezugsjahr,
+            String jahrQuelle
     ) {
         /** Zugriff über den Spaltennamen der Datenbank. */
         public Double wert(String schluessel) {
@@ -41,6 +49,10 @@ public class KabelRepository {
                 case "cable_actual_km" -> kabelReal;
                 default -> null;
             };
+        }
+
+        public boolean hatJahr() {
+            return bezugsjahr != null;
         }
     }
 
@@ -61,7 +73,10 @@ public class KabelRepository {
                        p.width_m,
                        p.cable_calculated_km,
                        p.cable_offer_km,
-                       p.cable_actual_km
+                       p.cable_actual_km,
+                       p.construction_start,
+                       p.construction_end_actual,
+                       p.construction_end_planned
                 FROM projects p
                 LEFT JOIN shipyards sy       ON sy.id = p.shipyard_id
                 LEFT JOIN ship_types st      ON st.id = p.ship_type_id
@@ -87,6 +102,24 @@ public class KabelRepository {
 
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
+                    Integer jahr = null;
+                    String quelle = null;
+
+                    Integer start = jahr(rs.getString("construction_start"));
+                    Integer endeIst = jahr(rs.getString("construction_end_actual"));
+                    Integer endeSoll = jahr(rs.getString("construction_end_planned"));
+
+                    if (start != null) {
+                        jahr = start;
+                        quelle = "Baubeginn";
+                    } else if (endeIst != null) {
+                        jahr = endeIst;
+                        quelle = "Bauende Ist";
+                    } else if (endeSoll != null) {
+                        jahr = endeSoll;
+                        quelle = "Bauende Soll";
+                    }
+
                     projekte.add(new KabelProjekt(
                             rs.getString("ship_name"),
                             rs.getString("shipyard"),
@@ -98,7 +131,9 @@ public class KabelRepository {
                             zahl(rs, "width_m"),
                             zahl(rs, "cable_calculated_km"),
                             zahl(rs, "cable_offer_km"),
-                            zahl(rs, "cable_actual_km")
+                            zahl(rs, "cable_actual_km"),
+                            jahr,
+                            quelle
                     ));
                 }
             }
@@ -107,6 +142,19 @@ public class KabelRepository {
         }
 
         return projekte;
+    }
+
+    /** Liest das Jahr aus "2018-01-01" (ISO, so speichert der Importer). */
+    private static Integer jahr(String datum) {
+        if (datum == null || datum.length() < 4) {
+            return null;
+        }
+        try {
+            int j = Integer.parseInt(datum.substring(0, 4));
+            return j > 1900 && j < 2200 ? j : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static Double zahl(ResultSet rs, String spalte) throws SQLException {

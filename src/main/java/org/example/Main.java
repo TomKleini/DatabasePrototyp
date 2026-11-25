@@ -1,5 +1,6 @@
 package org.example;
 
+import org.example.importer.ExcelImporter;
 import org.example.model.Project;
 import org.example.database.Database;
 import org.example.repository.ProjectRepository;
@@ -30,10 +31,19 @@ public class Main extends Application {
         Database.createTables();
         Database.insertMasterData();
 
+        /* Excel Importer zum testing. Uncomment to import data from an Excel file.
+        ExcelImporter.importSheet(
+            "C:\\Users\\tom.kleinikauf\\OneDrive - VINCI Energies\\Desktop\\Datenbank 2025-09-25 - Kopie.xlsx",
+            "Forschung & Spezial"
+        ); 
+        */
+
         Label appTitle = new Label("Schiffdatensammlung");
         appTitle.getStyleClass().add("app-title");
 
-        HBox topBar = new HBox(appTitle);
+        Button menuToggle = new Button("☰");
+        menuToggle.getStyleClass().add("menu-toggle");
+        HBox topBar = new HBox(12, menuToggle, appTitle);
         topBar.getStyleClass().add("top-bar");
         topBar.setAlignment(Pos.CENTER_LEFT);
 
@@ -50,16 +60,16 @@ public class Main extends Application {
                     new ProjectFormView(repository);
 
             formView.setOnCancel(() ->
-                    root.setCenter(overviewView)
+                    UiAnimations.showPage(root, overviewView)
             );
 
             formView.setOnSaved(newProjectId -> {
                 overviewView.reloadProjects();
-                root.setCenter(overviewView);
+                UiAnimations.showPage(root, overviewView);
             });
 
             root.setRight(null);
-            root.setCenter(formView);
+            UiAnimations.showPage(root, formView);
         });
 
         overviewView.setOnProjectOpen(project -> {
@@ -73,12 +83,12 @@ public class Main extends Application {
             try {
                 ProjectEditView editView = new ProjectEditView(repository, project.getId());
                 editView.setOnCancel(() -> {
-                    root.setCenter(overviewView);
+                    UiAnimations.showPage(root, overviewView);
                     detailsView.showProject(project);
                     root.setRight(detailsView);
                 });
                 editView.setOnSaved(id -> {
-                    root.setCenter(overviewView);
+                    UiAnimations.showPage(root, overviewView);
                     root.setRight(null);
                     try {
                         overviewView.reloadProjects();
@@ -91,7 +101,7 @@ public class Main extends Application {
                     }
                 });
                 root.setRight(null);
-                root.setCenter(editView);
+                UiAnimations.showPage(root, editView);
             } catch (RuntimeException e) {
                 showError(stage, "Bearbeiten nicht möglich", "Das Projekt konnte nicht geladen werden.", e);
             }
@@ -102,7 +112,7 @@ public class Main extends Application {
         Button overviewButton = new Button("Projekte");
         overviewButton.setOnAction(event -> {
             if (!allowNavigation(root)) return;
-            root.setCenter(overviewView);
+            UiAnimations.showPage(root, overviewView);
             root.setRight(null);
         });
 
@@ -115,7 +125,7 @@ public class Main extends Application {
         kpiButton.setOnAction(event -> {
             if (!allowNavigation(root)) return;
             kalkulationAuswahlView.showStart();
-            root.setCenter(kalkulationAuswahlView);
+            UiAnimations.showPage(root, kalkulationAuswahlView);
             root.setRight(null);
         });
 
@@ -130,9 +140,12 @@ public class Main extends Application {
         );
         navigation.getStyleClass().add("navigation");
 
+        Runnable toggleSidebar = UiAnimations.makeCollapsible(navigation, 175);
+        menuToggle.setOnAction(e -> toggleSidebar.run());
+
         root.setTop(topBar);
         root.setLeft(navigation);
-        root.setCenter(overviewView);
+        root.setCenter(overviewView);   // Start ohne Animation, bleibt so
 
         Scene scene = new Scene(root, 1100, 650);
 

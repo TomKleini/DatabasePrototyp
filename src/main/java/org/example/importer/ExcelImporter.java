@@ -26,7 +26,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Locale;
 
 /**
- * Einmaliger Excel-Import für die bisher betrachtete Blattstruktur.
+ * Excel-Import für die Blattstruktur der Schiffsdatenbank.
  *
  * Blattname                 -> Schiffskategorie
  * Spalte C                  -> Schiffsuntertyp
@@ -34,6 +34,14 @@ import java.util.Locale;
  * Spalten R bis AA          -> beteiligte Fachbereiche
  * Spalten AF bis AV         -> Soll-/Ist-Kennzahlen
  * Spalten AY bis BH         -> werden nicht importiert (berechnete Werte)
+ *
+ * NEU: Beleuchtungsaufteilung (Innenbeleuchtung, Außenbeleuchtung,
+ * Schalter/Steckdosen, Gesamt) wird über die Überschrift gefunden.
+ * Alle Spalten dahinter werden automatisch verschoben.
+ * Alte Excel-Dateien ohne diese Spalten funktionieren weiterhin.
+ *
+ * Bereits vorhandene Projekte werden nicht neu angelegt. Bei ihnen wird
+ * nur die Beleuchtungsaufteilung ergänzt bzw. aktualisiert.
  */
 public final class ExcelImporter {
 
@@ -72,6 +80,19 @@ public final class ExcelImporter {
             new MetricColumns("IO_DELIVERY_TIME", 45, 46)
     };
 
+    /** Neue Beleuchtungsaufteilung: Code, Name, Einheit. */
+    private static final String[][] LIGHTING_SPLIT_TYPES = {
+            {"LIGHTING_INDOOR", "Brennstellen Innenbeleuchtung", "Stk."},
+            {"LIGHTING_OUTDOOR", "Brennstellen Außenbeleuchtung", "Stk."},
+            {"LIGHTING_SWITCH_SOCKET", "Schalter/Steckdosen", "Stk."},
+            {"LIGHTING_TOTAL", "Brennstellen Gesamt", "Stk."}
+    };
+
+    // Werden pro Import aus der Kopfzeile ermittelt
+    private static int insertPosition = Integer.MAX_VALUE;
+    private static int insertedColumns = 0;
+    private static int[] lightingColumns = null;
+
     private ExcelImporter() {
     }
 
@@ -101,11 +122,14 @@ public final class ExcelImporter {
             connection.setAutoCommit(false);
 
             try {
+                detectLightingColumns(sheet, evaluator);
+                ensureLightingMetricTypes(connection);
+
                 int imported = importRows(connection, sheet, evaluator);
                 connection.commit();
 
                 System.out.println(
-                        imported + " Projekte aus dem Blatt '"
+                        imported + " neue Projekte aus dem Blatt '"
                                 + sheet.getSheetName()
                                 + "' wurden importiert."
                 );
@@ -153,19 +177,21 @@ public final class ExcelImporter {
             }
 
             int excelRow = rowIndex + 1;
-            String shipyardName = getCellText(row.getCell(0), evaluator);
-            String shipName = getCellText(row.getCell(1), evaluator);
-            String shipTypeName = getCellText(row.getCell(2), evaluator);
+            String shipyardName = getCellText(cell(row, 0), evaluator);
+            String shipName = getCellText(cell(row, 1), evaluator);
+            String shipTypeName = getCellText(cell(row, 2), evaluator);
 
             if (shipyardName.isBlank()) {
                 shipyardName = "n.b.";
 
                 System.out.println(
                         "Hinweis: In Excel-Zeile " + excelRow
-                                + " fehlt der Schiffstyp. Gespeichert als 'n.b.'."
+                                + " fehlt die Werft. Gespeichert als 'n.b.'."
                 );
             }
+
             requireValue(shipName, "Schiffsname", excelRow);
+
             if (shipTypeName.isBlank()) {
                 shipTypeName = "n.b.";
 
@@ -186,11 +212,17 @@ public final class ExcelImporter {
                     shipTypeName
             );
 
-            if (projectExists(connection, shipyardId, shipName)) {
+            Long existingProjectId =
+                    findProjectId(connection, shipyardId, shipName);
+
+            if (existingProjectId != null) {
+                int written = upsertLightingSplit(
+                        connection, row, evaluator, existingProjectId
+                );
                 System.out.println(
-                        "Excel-Zeile " + excelRow
-                                + " übersprungen: Projekt '"
-                                + shipName + "' existiert bereits."
+                        "Excel-Zeile " + excelRow + ": Projekt '"
+                                + shipName + "' existiert bereits, "
+                                + written + " Beleuchtungswerte ergänzt."
                 );
                 continue;
             }
@@ -218,6 +250,8 @@ public final class ExcelImporter {
                     projectId
             );
 
+            upsertLightingSplit(connection, row, evaluator, projectId);
+
             imported++;
         }
 
@@ -234,8 +268,8 @@ public final class ExcelImporter {
     ) throws SQLException {
 
         String status = firstNonBlank(
-                getCellText(row.getCell(28), evaluator),
-                getCellText(row.getCell(3), evaluator)
+                getCellText(cell(row, 28), evaluator),
+                getCellText(cell(row, 3), evaluator)
         );
 
         if (status.isBlank()) {
@@ -285,85 +319,37 @@ public final class ExcelImporter {
             statement.setInt(2, shipTypeId);
             statement.setString(
                     3,
-                    getCellText(row.getCell(1), evaluator)
+                    getCellText(cell(row, 1), evaluator)
             );
             statement.setString(4, status);
 
-            setNullableDouble(
-                    statement, 5,
-                    getCellNumber(row.getCell(4), evaluator)
-            );
-            setNullableDouble(
-                    statement, 6,
-                    getCellNumber(row.getCell(5), evaluator)
-            );
-            setNullableDouble(
-                    statement, 7,
-                    getCellNumber(row.getCell(6), evaluator)
-            );
-            setNullableDouble(
-                    statement, 8,
-                    getCellNumber(row.getCell(7), evaluator)
-            );
-            setNullableDouble(
-                    statement, 9,
-                    getCellNumber(row.getCell(8), evaluator)
-            );
-            setNullableDouble(
-                    statement, 10,
-                    getCellNumber(row.getCell(9), evaluator)
-            );
-            setNullableDouble(
-                    statement, 11,
-                    getCellNumber(row.getCell(10), evaluator)
-            );
+            setNullableDouble(statement, 5, getCellNumber(cell(row, 4), evaluator));
+            setNullableDouble(statement, 6, getCellNumber(cell(row, 5), evaluator));
+            setNullableDouble(statement, 7, getCellNumber(cell(row, 6), evaluator));
+            setNullableDouble(statement, 8, getCellNumber(cell(row, 7), evaluator));
+            setNullableDouble(statement, 9, getCellNumber(cell(row, 8), evaluator));
+            setNullableDouble(statement, 10, getCellNumber(cell(row, 9), evaluator));
+            setNullableDouble(statement, 11, getCellNumber(cell(row, 10), evaluator));
 
             statement.setInt(
                     12,
-                    getBooleanValue(row.getCell(11), evaluator) ? 1 : 0
+                    getBooleanValue(cell(row, 11), evaluator) ? 1 : 0
             );
 
-            setNullableDate(
-                    statement, 13,
-                    getCellDate(row.getCell(12), evaluator)
-            );
-            setNullableDate(
-                    statement, 14,
-                    getCellDate(row.getCell(13), evaluator)
-            );
-            setNullableDate(
-                    statement, 15,
-                    getCellDate(row.getCell(14), evaluator)
-            );
-            setNullableDate(
-                    statement, 16,
-                    getCellDate(row.getCell(15), evaluator)
-            );
-            setNullableDate(
-                    statement, 17,
-                    getCellDate(row.getCell(16), evaluator)
-            );
+            setNullableDate(statement, 13, getCellDate(cell(row, 12), evaluator));
+            setNullableDate(statement, 14, getCellDate(cell(row, 13), evaluator));
+            setNullableDate(statement, 15, getCellDate(cell(row, 14), evaluator));
+            setNullableDate(statement, 16, getCellDate(cell(row, 15), evaluator));
+            setNullableDate(statement, 17, getCellDate(cell(row, 16), evaluator));
 
-            setNullableText(
-                    statement, 18,
-                    getCellText(row.getCell(27), evaluator)
-            );
-            setNullableText(
-                    statement, 19,
-                    getCellText(row.getCell(29), evaluator)
-            );
-            setNullableText(
-                    statement, 20,
-                    getCellText(row.getCell(30), evaluator)
-            );
-            setNullableText(
-                    statement, 21,
-                    getCellText(row.getCell(48), evaluator)
-            );
+            setNullableText(statement, 18, getCellText(cell(row, 27), evaluator));
+            setNullableText(statement, 19, getCellText(cell(row, 29), evaluator));
+            setNullableText(statement, 20, getCellText(cell(row, 30), evaluator));
+            setNullableText(statement, 21, getCellText(cell(row, 48), evaluator));
 
             statement.setInt(
                     22,
-                    getRelevance(row.getCell(49), evaluator)
+                    getRelevance(cell(row, 49), evaluator)
             );
 
             statement.executeUpdate();
@@ -404,7 +390,7 @@ public final class ExcelImporter {
 
             for (DepartmentColumn mapping : DEPARTMENT_COLUMNS) {
                 String value = getCellText(
-                        row.getCell(mapping.columnIndex()),
+                        cell(row, mapping.columnIndex()),
                         evaluator
                 );
 
@@ -446,11 +432,11 @@ public final class ExcelImporter {
 
             for (MetricColumns mapping : METRIC_COLUMNS) {
                 Double target = getCellNumber(
-                        row.getCell(mapping.targetColumn()),
+                        cell(row, mapping.targetColumn()),
                         evaluator
                 );
                 Double actual = getCellNumber(
-                        row.getCell(mapping.actualColumn()),
+                        cell(row, mapping.actualColumn()),
                         evaluator
                 );
 
@@ -466,7 +452,7 @@ public final class ExcelImporter {
             }
 
             Double[] fireDetectors = getTargetAndActual(
-                    row.getCell(47),
+                    cell(row, 47),
                     evaluator
             );
 
@@ -482,6 +468,225 @@ public final class ExcelImporter {
         }
     }
 
+    // ------------------------------------------------------------
+    // NEU: Beleuchtungsaufteilung
+    // ------------------------------------------------------------
+
+    /** Liest eine alte Spaltennummer und verschiebt sie bei Bedarf. */
+    private static Cell cell(Row row, int oldIndex) {
+        int index = oldIndex >= insertPosition
+                ? oldIndex + insertedColumns
+                : oldIndex;
+        return row.getCell(index);
+    }
+
+    /** Sucht die neuen Beleuchtungsspalten über die Überschrift. */
+    private static void detectLightingColumns(
+            Sheet sheet,
+            FormulaEvaluator evaluator
+    ) {
+        insertPosition = Integer.MAX_VALUE;
+        insertedColumns = 0;
+        lightingColumns = null;
+
+        Row header = sheet.getRow(0);
+        if (header == null) {
+            return;
+        }
+
+        int indoor = findHeader(header, evaluator, 0, "innenbeleuchtung");
+
+        if (indoor < 0) {
+            System.out.println(
+                    "Keine Spalte 'Innenbeleuchtung' gefunden: "
+                            + "Import im alten Spaltenformat."
+            );
+            return;
+        }
+
+        int outdoor = findHeader(header, evaluator, indoor,
+                "außenbeleuchtung", "aussenbeleuchtung");
+        int switchSocket = findHeader(header, evaluator, indoor, "schalter");
+        int total = findHeader(header, evaluator, indoor, "gesamt");
+
+        if (outdoor < 0 || switchSocket < 0 || total < 0) {
+            throw new IllegalArgumentException(
+                    "Beleuchtungsspalten unvollständig. Gefunden: Innen="
+                            + indoor + ", Außen=" + outdoor
+                            + ", Schalter/Steckdosen=" + switchSocket
+                            + ", Gesamt=" + total
+            );
+        }
+
+        lightingColumns = new int[]{indoor, outdoor, switchSocket, total};
+        insertPosition = indoor;
+        insertedColumns =
+                Math.max(Math.max(outdoor, switchSocket), total) - indoor + 1;
+
+        System.out.println(
+                "Beleuchtungsaufteilung erkannt ab Spalte " + (indoor + 1)
+                        + ", " + insertedColumns
+                        + " neue Spalten. Alle späteren Spalten werden verschoben."
+        );
+
+        // Kontrolle: Stimmen die verschobenen Spalten?
+        int[] check = {33, 34, 47, 48, 49};
+        String[] meaning = {
+                "Brennstellen Soll", "Brennstellen Ist",
+                "Brandmelder", "Kommentare", "Relevanz"
+        };
+        for (int i = 0; i < check.length; i++) {
+            System.out.println(
+                    "  Kontrolle " + meaning[i] + " -> Überschrift: '"
+                            + getCellText(cell(header, check[i]), evaluator)
+                                    .replace("\n", " ")
+                            + "'"
+            );
+        }
+    }
+
+    private static int findHeader(
+            Row header,
+            FormulaEvaluator evaluator,
+            int startIndex,
+            String... keywords
+    ) {
+        int last = header.getLastCellNum();
+        int end = startIndex == 0 ? last : Math.min(last, startIndex + 10);
+
+        for (int i = startIndex; i < end; i++) {
+            String text = getCellText(header.getCell(i), evaluator)
+                    .toLowerCase(Locale.GERMAN)
+                    .replaceAll("\\s+", "")
+                    .replace("-", "");
+
+            for (String keyword : keywords) {
+                if (text.contains(keyword)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /** Legt die neuen Kennzahltypen an, falls sie fehlen. */
+    private static void ensureLightingMetricTypes(Connection connection)
+            throws SQLException {
+
+        String sql = """
+                INSERT INTO metric_types (code, name, unit)
+                SELECT ?, ?, ?
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM metric_types WHERE code = ?
+                )
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (String[] type : LIGHTING_SPLIT_TYPES) {
+                statement.setString(1, type[0]);
+                statement.setString(2, type[1]);
+                statement.setString(3, type[2]);
+                statement.setString(4, type[0]);
+                statement.addBatch();
+            }
+            statement.executeBatch();
+        }
+    }
+
+    /** Schreibt Innen/Außen/Schalter/Gesamt als Soll-Werte. */
+    private static int upsertLightingSplit(
+            Connection connection,
+            Row row,
+            FormulaEvaluator evaluator,
+            long projectId
+    ) throws SQLException {
+
+        if (lightingColumns == null) {
+            return 0;
+        }
+
+        String deleteSql = """
+                DELETE FROM project_metrics
+                WHERE project_id = ?
+                  AND metric_type_id = (
+                      SELECT id FROM metric_types WHERE code = ?
+                  )
+                """;
+
+        String insertSql = """
+                INSERT INTO project_metrics (
+                    project_id,
+                    metric_type_id,
+                    target_value,
+                    actual_value
+                )
+                SELECT ?, id, ?, NULL
+                FROM metric_types
+                WHERE code = ?
+                """;
+
+        int written = 0;
+
+        try (
+                PreparedStatement delete = connection.prepareStatement(deleteSql);
+                PreparedStatement insert = connection.prepareStatement(insertSql)
+        ) {
+            for (int i = 0; i < lightingColumns.length; i++) {
+                Double value = getCellNumber(
+                        row.getCell(lightingColumns[i]),
+                        evaluator
+                );
+
+                if (value == null) {
+                    continue;
+                }
+
+                String code = LIGHTING_SPLIT_TYPES[i][0];
+
+                delete.setLong(1, projectId);
+                delete.setString(2, code);
+                delete.executeUpdate();
+
+                insert.setLong(1, projectId);
+                insert.setDouble(2, value);
+                insert.setString(3, code);
+                insert.executeUpdate();
+
+                written++;
+            }
+        }
+
+        return written;
+    }
+
+    private static Long findProjectId(
+            Connection connection,
+            int shipyardId,
+            String shipName
+    ) throws SQLException {
+
+        String sql = """
+                SELECT id
+                FROM projects
+                WHERE shipyard_id = ?
+                  AND ship_name = ? COLLATE NOCASE
+                LIMIT 1
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, shipyardId);
+            statement.setString(2, shipName);
+
+            try (ResultSet result = statement.executeQuery()) {
+                return result.next() ? result.getLong("id") : null;
+            }
+        }
+    }
+
+    // ------------------------------------------------------------
+    // Stammdaten anlegen / finden
+    // ------------------------------------------------------------
+
     private static int findOrCreateCategory(
             Connection connection,
             String categoryName
@@ -493,11 +698,7 @@ public final class ExcelImporter {
                 WHERE name = ? COLLATE NOCASE
                 """;
 
-        Integer existingId = findId(
-                connection,
-                selectSql,
-                categoryName
-        );
+        Integer existingId = findId(connection, selectSql, categoryName);
 
         if (existingId != null) {
             return existingId;
@@ -522,11 +723,7 @@ public final class ExcelImporter {
                 WHERE name = ? COLLATE NOCASE
                 """;
 
-        Integer existingId = findId(
-                connection,
-                selectSql,
-                shipyardName
-        );
+        Integer existingId = findId(connection, selectSql, shipyardName);
 
         if (existingId != null) {
             return existingId;
@@ -591,31 +788,6 @@ public final class ExcelImporter {
         );
     }
 
-    private static boolean projectExists(
-            Connection connection,
-            int shipyardId,
-            String shipName
-    ) throws SQLException {
-
-        String sql = """
-                SELECT 1
-                FROM projects
-                WHERE shipyard_id = ?
-                  AND ship_name = ? COLLATE NOCASE
-                LIMIT 1
-                """;
-
-        try (PreparedStatement statement =
-                     connection.prepareStatement(sql)) {
-            statement.setInt(1, shipyardId);
-            statement.setString(2, shipName);
-
-            try (ResultSet result = statement.executeQuery()) {
-                return result.next();
-            }
-        }
-    }
-
     private static Integer findId(
             Connection connection,
             String sql,
@@ -656,6 +828,10 @@ public final class ExcelImporter {
 
         throw new SQLException("Datensatz konnte nicht angelegt werden: " + value);
     }
+
+    // ------------------------------------------------------------
+    // Zellen lesen
+    // ------------------------------------------------------------
 
     private static String getCellText(
             Cell cell,
@@ -712,7 +888,7 @@ public final class ExcelImporter {
             // "3.400" oder "11.845": Punkt ist Tausendertrennzeichen
             normalized = normalized.replace(".", "");
         }
-        
+
         try {
             return Double.parseDouble(normalized);
         } catch (NumberFormatException exception) {
@@ -794,7 +970,7 @@ public final class ExcelImporter {
         return new Double[]{target, actual};
     }
 
-        private static Double parsePlainNumber(String text) {
+    private static Double parsePlainNumber(String text) {
         if (text == null) {
             return null;
         }
@@ -853,6 +1029,10 @@ public final class ExcelImporter {
         return 1;
     }
 
+    // ------------------------------------------------------------
+    // Hilfsmethoden
+    // ------------------------------------------------------------
+
     private static void setNullableDouble(
             PreparedStatement statement,
             int parameter,
@@ -893,9 +1073,9 @@ public final class ExcelImporter {
             Row row,
             FormulaEvaluator evaluator
     ) {
-        return getCellText(row.getCell(0), evaluator).isBlank()
-                && getCellText(row.getCell(1), evaluator).isBlank()
-                && getCellText(row.getCell(2), evaluator).isBlank();
+        return getCellText(cell(row, 0), evaluator).isBlank()
+                && getCellText(cell(row, 1), evaluator).isBlank()
+                && getCellText(cell(row, 2), evaluator).isBlank();
     }
 
     private static boolean isMissingText(String value) {

@@ -1,15 +1,96 @@
-/* 20.10.2026: CSS-Klammern korrigiert; Auswahlregeln zusammengefasst. */
+/* ============================================================
+   SCHIFFDATENSAMMLUNG – app.css
+   Einheitliches Designsystem (VINCI Energies / Actemium-Blau)
+
+   Aufbau:
+    0. Farb-Variablen (nur HIER Farben ändern)
+    1. Grundstil
+    2. Topbar & Seitenkopf
+    3. Navigation
+    4. Buttons
+    5. Cards
+    6. Tabellen
+    7. Eingabefelder (TextField, ComboBox, DatePicker, CheckBox)
+    8. Tabs
+    9. Scrollbars
+   10. Projektdetails
+   11. Kalkulation
+   12. Projekt bearbeiten
+   13. Diagramme, ProgressBar, Tooltip
+   14. Sidebar-Schalter
+   15. Klappbereiche (TitledPane)
+   16. Brennstellen-Aufteilung
+   ============================================================ */
+
+
+/* ============================================================
+   0. FARB-VARIABLEN
+   ============================================================ */
 
 .root {
+    /* Marke */
+    -c-brand:          #004289;   /* VINCI Energies / Actemium Blau */
+    -c-brand-dark:     #00326a;
+    -c-primary:        #0b62b5;   /* Buttons, aktive Tabs, Diagramme */
+    -c-primary-hover:  #004289;
+    -c-primary-soft:   #e6eef8;   /* Hover, Tabellenkopf */
+    -c-primary-select: #cfe0f3;   /* ausgewählte Zeile */
+    -c-accent:         #7cb342;   /* Platzhalter: exakten Actemium-Grünton aus CI übernehmen */
+    -c-danger:         #c8102e;
+
+    /* Flächen & Linien */
+    -c-bg:             #f4f7fb;
+    -c-surface:        #ffffff;
+    -c-surface-alt:    #f8fbfe;
+    -c-border:         #dbe5ef;
+    -c-border-strong:  #c3d2e2;
+
+    /* Text */
+    -c-text:           #16324f;
+    -c-text-body:      #263d52;
+    -c-text-muted:     #687b8e;
+    -c-text-disabled:  #8b98a8;
+
+    /* JavaFX-Standardfarben auf unsere Palette umbiegen */
+    -fx-accent:              #0b62b5;
+    -fx-focus-color:         #0b62b5;
+    -fx-faint-focus-color:   transparent;
+    -fx-selection-bar:       #cfe0f3;
+    -fx-selection-bar-non-focused: #e6eef8;
+
     -fx-font-family: "Segoe UI";
-    -fx-background-color: #f4f7fb;
+    -fx-font-size: 13px;
+    -fx-background-color: -c-bg;
 }
 
-/* Obere blaue Leiste */
+
+/* ============================================================
+   1. GRUNDSTIL
+   ============================================================ */
+
+.label {
+    -fx-text-fill: -c-text-body;
+}
+
+.hint {
+    -fx-text-fill: -c-text-muted;
+    -fx-font-size: 11px;
+}
+
+.section-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -c-text;
+}
+
+
+/* ============================================================
+   2. TOPBAR & SEITENKOPF
+   ============================================================ */
 
 .top-bar {
-    -fx-background-color: #124e78;
-    -fx-padding: 18 28 18 28;
+    -fx-background-color: -c-brand;
+    -fx-padding: 16 28 16 28;
 }
 
 .app-title {
@@ -18,129 +99,451 @@
     -fx-font-weight: bold;
 }
 
-/* Hauptbereich */
-
 .content {
     -fx-padding: 28;
     -fx-spacing: 20;
 }
 
 .page-title {
-    -fx-text-fill: #16324f;
+    -fx-text-fill: -c-text;
     -fx-font-size: 26px;
     -fx-font-weight: bold;
 }
 
-.page-description {
-    -fx-text-fill: #687b8e;
+/* Beide Schreibweisen, weil im Java-Code "page-describtion" steht */
+.page-description,
+.page-describtion {
+    -fx-text-fill: -c-text-muted;
     -fx-font-size: 13px;
 }
 
-/* Weiße Inhaltskarte */
 
-.content-card {
-    -fx-background-color: white;
-    -fx-background-radius: 12;
-    -fx-border-color: #dbe5ef;
-    -fx-border-radius: 12;
-    -fx-padding: 20;
-}
+/* ============================================================
+   3. NAVIGATION
+   Breite steuert UiAnimations (einklappbar), daher hier keine pref-width.
+   ============================================================ */
 
-/* Schaltflächen */
-
-.primary-button {
-    -fx-background-color: #1976b9;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-background-radius: 7;
-    -fx-padding: 10 18;
-    -fx-cursor: hand;
-}
-
-.primary-button:hover {
-    -fx-background-color: #125f96;
-}
-
-/* Tabelle */
-
-.table-view {
-    -fx-background-color: transparent;
-    -fx-border-color: #dbe5ef;
-    -fx-border-radius: 7;
-}
-
-.table-view .column-header-background {
-    -fx-background-color: #edf4fa;
-}
-
-.table-view .column-header {
-    -fx-background-color: transparent;
-    -fx-padding: 10;
-}
-
-.table-view .column-header .label {
-    -fx-text-fill: #284a68;
-    -fx-font-weight: bold;
-    -fx-alignment: center-left;
-}
-
-.table-row-cell {
-    -fx-background-color: white;
-    -fx-border-color: transparent transparent #edf1f5 transparent;
-}
-
-.table-row-cell:hover {
-    -fx-background-color: #f1f7fc;
-}
-
-.table-row-cell:selected {
-    -fx-background-color:  #9fc7e5;
-}
-
-.table-row-cell:selected .table-cell {
-    -fx-text-fill: black;
-}
 .navigation {
-    -fx-background-color: #ffffff;
+    -fx-background-color: -c-surface;
     -fx-padding: 20 12;
-    -fx-pref-width: 175;
-    -fx-border-color: transparent #dbe5ef transparent transparent;
+    -fx-spacing: 6;
+    -fx-border-color: transparent -c-border transparent transparent;
 }
 
 .navigation .button {
     -fx-pref-width: 150;
     -fx-alignment: center-left;
     -fx-background-color: transparent;
-    -fx-text-fill: #284a68;
-    -fx-padding: 11 14;
-    -fx-background-radius: 7;
+    -fx-border-color: transparent;
+    -fx-text-fill: -c-text;
+    -fx-padding: 10 14;
+    -fx-background-radius: 8;
     -fx-cursor: hand;
 }
 
 .navigation .button:hover {
-    -fx-background-color: #edf4fa;
+    -fx-background-color: -c-primary-soft;
 }
 
 .navigation .button.active {
-    -fx-background-color: #d8ebfa;
-    -fx-text-fill: #124e78;
+    -fx-background-color: -c-primary-select;
+    -fx-text-fill: -c-brand;
     -fx-font-weight: bold;
 }
-.detail-card {
-    -fx-background-color: white;
-    -fx-border-color: #d9d9d9;
+
+.navigation .button:disabled {
+    -fx-opacity: 1;
+    -fx-text-fill: -c-text-disabled;
+}
+
+
+/* ============================================================
+   4. BUTTONS
+   ============================================================ */
+
+/* Standard-Button (alles ohne eigene Klasse) */
+.button {
+    -fx-background-color: -c-surface;
+    -fx-border-color: -c-border-strong;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
-    -fx-padding: 15;
+    -fx-text-fill: -c-brand;
+    -fx-padding: 8 14;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: -c-primary-soft;
+}
+
+/* Hauptaktion */
+.primary-button {
+    -fx-background-color: -c-primary;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 10 18;
+    -fx-cursor: hand;
+}
+
+.primary-button:hover {
+    -fx-background-color: -c-primary-hover;
+}
+
+.primary-button:pressed {
+    -fx-background-color: -c-brand-dark;
+}
+
+
+/* ============================================================
+   5. CARDS
+   Keine Schatten auf Cards mit Tabellen (Scroll-Performance).
+   ============================================================ */
+
+.content-card {
+    -fx-background-color: -c-surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -c-border;
+    -fx-border-radius: 12;
+    -fx-padding: 20;
+}
+
+.detail-card {
+    -fx-background-color: -c-surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -c-border;
+    -fx-border-radius: 12;
+    -fx-padding: 16;
     -fx-spacing: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 66, 137, 0.06), 10, 0, 0, 2);
 }
 
 .detail-card .label:first-child {
     -fx-font-weight: bold;
+    -fx-text-fill: -c-text;
 }
+
+.detail-card-title {
+    -fx-font-weight: bold;
+    -fx-text-fill: -c-text;
+}
+
+
+/* ============================================================
+   6. TABELLEN
+   ============================================================ */
+
+.table-view {
+    -fx-background-color: -c-surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -c-border;
+    -fx-border-radius: 12;
+    -fx-padding: 0;
+    -fx-table-cell-border-color: transparent;
+}
+
+.table-view:focused {
+    -fx-background-insets: 0;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: -c-primary-soft;
+    -fx-background-radius: 12 12 0 0;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-size: 40;
+}
+
+.table-view .column-header {
+    -fx-padding: 0 8;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: -c-text;
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+}
+
+.table-view .column-resize-line {
+    -fx-background-color: -c-primary;
+}
+
+.table-row-cell {
+    -fx-background-color: -c-surface;
+    -fx-border-color: transparent transparent #edf1f5 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-cell-size: 34;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: -c-surface-alt;
+}
+
+.table-row-cell:filled:hover {
+    -fx-background-color: -c-primary-soft;
+}
+
+.table-row-cell:selected,
+.table-row-cell:filled:selected:hover {
+    -fx-background-color: -c-primary-select;
+}
+
+.table-view .table-cell {
+    -fx-padding: 0 8;
+    -fx-text-fill: -c-text-body;
+    -fx-border-color: transparent;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: -c-brand;
+}
+
+.table-view .placeholder .label {
+    -fx-text-fill: -c-text-muted;
+}
+
+.table-view .corner {
+    -fx-background-color: -c-surface;
+}
+
+
+/* ============================================================
+   7. EINGABEFELDER
+   ============================================================ */
+
+.text-field,
+.combo-box,
+.date-picker {
+    -fx-background-color: -c-surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -c-border-strong;
+    -fx-border-radius: 8;
+    -fx-background-insets: 0;
+    -fx-text-fill: -c-text-body;
+    -fx-prompt-text-fill: -c-text-disabled;
+}
+
+.text-field {
+    -fx-padding: 6 10;
+}
+
+.text-field:hover,
+.combo-box:hover,
+.date-picker:hover {
+    -fx-border-color: #9db6cf;
+}
+
+.text-field:focused,
+.combo-box:focused,
+.combo-box:showing,
+.date-picker:focused {
+    -fx-border-color: -c-primary;
+}
+
+/* DatePicker: inneres Textfeld ohne eigenen Rahmen */
+.date-picker > .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.combo-box .arrow-button,
+.date-picker .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 10 0 6;
+}
+
+.combo-box .arrow,
+.date-picker .arrow {
+    -fx-background-color: -c-text-muted;
+}
+
+.combo-box .list-cell {
+    -fx-padding: 5 10;
+    -fx-text-fill: -c-text-body;
+}
+
+/* Aufklappliste (Popup: feste Farben, keine Variablen) */
+.combo-box-popup .list-view {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #dbe5ef;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 66, 137, 0.12), 12, 0, 0, 3);
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-background-color: white;
+    -fx-padding: 6 10;
+    -fx-text-fill: #263d52;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #e6eef8;
+}
+
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: #cfe0f3;
+    -fx-text-fill: #004289;
+}
+
+/* CheckBox */
+.check-box {
+    -fx-text-fill: -c-text-body;
+}
+
+.check-box .box {
+    -fx-background-color: -c-surface;
+    -fx-border-color: -c-border-strong;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-background-insets: 0;
+}
+
+.check-box:hover .box {
+    -fx-border-color: -c-primary;
+}
+
+.check-box:selected .box {
+    -fx-background-color: -c-primary;
+    -fx-border-color: -c-primary;
+}
+
+.check-box:selected .mark {
+    -fx-background-color: white;
+}
+
+
+/* ============================================================
+   8. TABS (gemeinsamer Stil für Kalkulation & Projekt bearbeiten)
+   ============================================================ */
+
+.calculation-tabs,
+.project-edit-tabs {
+    -fx-tab-min-height: 36;
+    -fx-open-tab-animation: NONE;
+    -fx-close-tab-animation: NONE;
+}
+
+.calculation-tabs > .tab-header-area,
+.project-edit-tabs > .tab-header-area {
+    -fx-padding: 0 0 8 0;
+}
+
+.calculation-tabs > .tab-header-area > .tab-header-background,
+.project-edit-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab,
+.project-edit-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: #e8eff6;
+    -fx-background-radius: 8;
+    -fx-background-insets: 0 4 0 0;
+    -fx-padding: 8 15;
+    -fx-cursor: hand;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab:hover,
+.project-edit-tabs > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: -c-primary-select;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab .tab-label,
+.project-edit-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: #45627d;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab:selected,
+.project-edit-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -c-primary;
+}
+
+.calculation-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label,
+.project-edit-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: white;
+}
+
+/* blauen Fokusrahmen um Tabs entfernen */
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .focus-indicator {
+    -fx-border-color: transparent;
+}
+
+
+/* ============================================================
+   9. SCROLLBARS (schmal, rund, ohne Pfeile)
+   ============================================================ */
+
+.scroll-bar {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+
+.scroll-bar:vertical {
+    -fx-pref-width: 10;
+}
+
+.scroll-bar:horizontal {
+    -fx-pref-height: 10;
+}
+
+.scroll-bar .track,
+.scroll-bar .track-background {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #c5d3e2;
+    -fx-background-radius: 8;
+    -fx-background-insets: 0;
+}
+
+.scroll-bar .thumb:hover,
+.scroll-bar .thumb:pressed {
+    -fx-background-color: #9db6cf;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-shape: " ";
+    -fx-padding: 0;
+}
+
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-pane > .corner {
+    -fx-background-color: transparent;
+}
+
+
+/* ============================================================
+   10. PROJEKTDETAILS
+   ============================================================ */
+
 .details-pane {
-    -fx-background-color: #f7faff;
-    -fx-border-color: #dce6f2;
+    -fx-background-color: -c-surface-alt;
+    -fx-border-color: -c-border;
     -fx-border-width: 0 0 0 1;
     -fx-padding: 20;
     -fx-spacing: 18;
@@ -149,22 +552,22 @@
 .details-project-name {
     -fx-font-size: 17px;
     -fx-font-weight: bold;
-    -fx-text-fill: #173b63;
-}
-
-.detail-card-title {
-    -fx-font-weight: bold;
-    -fx-text-fill: #173b63;
+    -fx-text-fill: -c-text;
 }
 
 .details-close-button {
     -fx-background-color: transparent;
+    -fx-border-color: transparent;
     -fx-font-size: 22px;
+    -fx-text-fill: -c-text-muted;
+    -fx-background-radius: 8;
     -fx-cursor: hand;
 }
 
 .details-scroll,
-.details-scroll > .viewport {
+.details-scroll > .viewport,
+.kalkulation-scroll,
+.kalkulation-scroll > .viewport {
     -fx-background-color: transparent;
 }
 
@@ -172,80 +575,37 @@
     -fx-background-insets: 0;
     -fx-padding: 0;
 }
-.kalkulation-scroll,
-.kalkulation-scroll > .viewport {
-    -fx-background-color: transparent;
-}
 
-.section-title {
-    -fx-font-size: 15px;
-    -fx-font-weight: bold;
-}
 
-.hint {
-    -fx-text-fill: #6b7280;
-    -fx-font-size: 11px;
-}
+/* ============================================================
+   11. KALKULATION
+   ============================================================ */
 
-/* Kalkulation: feste Filter und getrennte Arbeitsbereiche */
 .calculation-content {
     -fx-spacing: 14;
     -fx-padding: 22 24 18 24;
 }
 
 .calculation-filter-card {
-    -fx-background-color: white;
-    -fx-background-radius: 10;
-    -fx-border-color: #dbe5ef;
-    -fx-border-radius: 10;
+    -fx-background-color: -c-surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -c-border;
+    -fx-border-radius: 12;
     -fx-padding: 12 16;
 }
 
 .calculation-refresh-button {
-    -fx-background-color: #edf4fa;
-    -fx-text-fill: #124e78;
-    -fx-background-radius: 7;
+    -fx-background-color: -c-primary-soft;
+    -fx-border-color: transparent;
+    -fx-text-fill: -c-brand;
+    -fx-background-radius: 8;
     -fx-padding: 8 14;
     -fx-font-weight: bold;
     -fx-cursor: hand;
 }
 
 .calculation-refresh-button:hover {
-    -fx-background-color: #d8ebfa;
-}
-
-.calculation-tabs {
-    -fx-tab-min-height: 36;
-    -fx-open-tab-animation: NONE;
-    -fx-close-tab-animation: NONE;
-}
-
-.calculation-tabs > .tab-header-area {
-    -fx-padding: 0 0 8 0;
-}
-
-.calculation-tabs > .tab-header-area > .tab-header-background {
-    -fx-background-color: transparent;
-}
-
-.calculation-tabs > .tab-header-area > .headers-region > .tab {
-    -fx-background-color: #e8eff6;
-    -fx-background-radius: 8 8 0 0;
-    -fx-padding: 8 15;
-}
-
-.calculation-tabs > .tab-header-area > .headers-region > .tab .tab-label {
-    -fx-text-fill: #45627d;
-    -fx-font-size: 12px;
-    -fx-font-weight: bold;
-}
-
-.calculation-tabs > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: #1976b9;
-}
-
-.calculation-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
-    -fx-text-fill: white;
+    -fx-background-color: -c-primary-select;
 }
 
 .calculation-tab-scroll,
@@ -268,158 +628,132 @@
     -fx-padding: 0 2 4 2;
 }
 
-
-/* Schritt 3: unten an die bestehende app.css anhängen. */
-.project-edit-tabs {
-    -fx-open-tab-animation: NONE;
-    -fx-close-tab-animation: NONE;
-}
-.project-edit-tabs > .tab-header-area > .tab-header-background {
-    -fx-background-color: transparent;
-}
-.project-edit-tabs > .tab-header-area > .headers-region > .tab {
-    -fx-background-color: #e8eff6;
-    -fx-background-radius: 8 8 0 0;
-    -fx-padding: 9 14;
-}
-.project-edit-tabs > .tab-header-area > .headers-region > .tab:selected {
-    -fx-background-color: #1976b9;
-}
-.project-edit-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
-    -fx-text-fill: white;
-}
-.project-edit-scroll,
-.project-edit-scroll > .viewport,
-.project-edit-body {
-    -fx-background-color: white;
-}
-.project-edit-scroll {
-    -fx-border-color: #dbe5ef;
-    -fx-border-radius: 0 8 8 8;
-    -fx-background-insets: 0;
-    -fx-padding: 0;
-}
-.project-edit .text-field,
-.project-edit .combo-box,
-.project-edit .date-picker {
-    -fx-pref-height: 34;
-}
-.project-edit-error {
-    -fx-text-fill: #b42318;
-    -fx-font-size: 12px;
-}
-
-
-/* Schritt 4: unten an die vorhandene app.css anhängen. */
+/* Kalkulationsmenü */
 .calculation-area,
 .calculation-menu-scroll,
 .calculation-menu-scroll > .viewport {
-    -fx-background-color: #f4f7fb;
+    -fx-background-color: -c-bg;
 }
+
 .calculation-menu-scroll {
     -fx-padding: 0;
     -fx-background-insets: 0;
 }
+
 .calculation-menu-card {
-    -fx-background-color: white;
+    -fx-background-color: -c-surface;
     -fx-background-radius: 12;
-    -fx-border-color: #dbe5ef;
+    -fx-border-color: -c-border;
     -fx-border-radius: 12;
     -fx-padding: 22;
 }
+
 .calculation-menu-card.available {
-    -fx-border-color: #9fc5e4;
+    -fx-border-color: #9fc0e2;
 }
+
 .calculation-menu-card.available:hover {
-    -fx-border-color: #1976b9;
+    -fx-border-color: -c-primary;
+    -fx-effect: dropshadow(gaussian, rgba(0, 66, 137, 0.12), 14, 0, 0, 3);
 }
+
 .calculation-menu-card.planned {
     -fx-background-color: #eef1f5;
     -fx-border-color: #dce2e9;
 }
+
 .calculation-menu-number {
     -fx-font-size: 14px;
     -fx-font-weight: bold;
-    -fx-text-fill: #1976b9;
+    -fx-text-fill: -c-primary;
 }
+
 .calculation-menu-badge {
     -fx-font-size: 10px;
     -fx-padding: 5 8;
     -fx-background-radius: 12;
 }
+
 .calculation-menu-badge.available {
-    -fx-background-color: #e1effa;
-    -fx-text-fill: #125f96;
+    -fx-background-color: -c-primary-soft;
+    -fx-text-fill: -c-brand;
 }
+
 .calculation-menu-badge.planned {
     -fx-background-color: #e0e5eb;
     -fx-text-fill: #657589;
 }
+
 .calculation-menu-card-title {
     -fx-font-size: 18px;
     -fx-font-weight: bold;
-    -fx-text-fill: #16324f;
+    -fx-text-fill: -c-text;
 }
+
 .calculation-menu-description {
     -fx-font-size: 13px;
     -fx-text-fill: #526b82;
 }
+
 .calculation-menu-detail {
     -fx-font-size: 11px;
-    -fx-text-fill: #687b8e;
+    -fx-text-fill: -c-text-muted;
 }
+
 .calculation-menu-card.planned .calculation-menu-card-title,
 .calculation-menu-card.planned .calculation-menu-number {
     -fx-text-fill: #718196;
 }
+
 .calculation-menu-disabled-button:disabled {
     -fx-opacity: 1;
     -fx-background-color: #dfe5ec;
+    -fx-border-color: transparent;
     -fx-text-fill: #718196;
-    -fx-background-radius: 7;
+    -fx-background-radius: 8;
     -fx-padding: 10 14;
 }
+
 .calculation-menu-note {
-    -fx-text-fill: #687b8e;
+    -fx-text-fill: -c-text-muted;
     -fx-font-size: 12px;
 }
+
 .calculation-menu-error {
-    -fx-text-fill: #b42318;
+    -fx-text-fill: -c-danger;
 }
+
 .calculation-back-button {
-    -fx-background-color: #e1edf8;
-    -fx-text-fill: #125f96;
-    -fx-background-radius: 7;
+    -fx-background-color: -c-primary-soft;
+    -fx-border-color: transparent;
+    -fx-text-fill: -c-brand;
+    -fx-background-radius: 8;
     -fx-padding: 8 12;
     -fx-cursor: hand;
 }
+
 .calculation-back-button:hover {
-    -fx-background-color: #d2e5f5;
+    -fx-background-color: -c-primary-select;
 }
+
 .calculation-breadcrumb {
-    -fx-text-fill: #687b8e;
+    -fx-text-fill: -c-text-muted;
     -fx-font-size: 11px;
 }
 
-/* ============================================================
-   KALKULATIONSAUSWAHL
-   Farben und Rundung der drei Auswahlbuttons hier anpassen.
-   ============================================================ */
-
-/* Hintergrund der Seite (nicht der Buttons). */
+/* Kalkulationsauswahl (große runde Buttons) */
 .calculation-choice-content {
     -fx-padding: 28;
-    -fx-background-color: #f4f7fb;
+    -fx-background-color: -c-bg;
 }
 
 .calculation-choice-heading {
     -fx-padding: 8 0 0 0;
 }
 
-/* Aktiver Button: Hintergrund, Rand, Rundung und Schrift. */
 .calculation-choice {
-    -fx-background-color: #1976b9;
-    -fx-border-color: #1976b9;
+    -fx-background-color: -c-primary;
+    -fx-border-color: -c-primary;
     -fx-background-radius: 30;
     -fx-border-radius: 30;
     -fx-border-width: 1.4;
@@ -428,10 +762,9 @@
     -fx-font-weight: bold;
     -fx-text-fill: white;
     -fx-cursor: hand;
-    -fx-effect: dropshadow(gaussian, rgba(21, 63, 99, 0.10), 12, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0, 66, 137, 0.12), 12, 0, 0, 4);
 }
 
-/* Gluhbirne, Kabel und Checkliste. */
 .calculation-choice .calculation-choice-icon {
     -fx-fill: transparent;
     -fx-stroke: white;
@@ -440,34 +773,256 @@
     -fx-stroke-line-join: round;
 }
 
-/* Maus uber dem aktiven Button. */
 .calculation-choice:hover {
-    -fx-background-color: #125f96;
-    -fx-border-color: #125f96;
+    -fx-background-color: -c-primary-hover;
+    -fx-border-color: -c-primary-hover;
 }
 
-/* Button wird gedruckt. */
 .calculation-choice:pressed {
-    -fx-background-color: #0e4f7d;
-    -fx-border-color: #0e4f7d;
+    -fx-background-color: -c-brand-dark;
+    -fx-border-color: -c-brand-dark;
 }
 
-/* Sichtbare Markierung bei Tastaturbedienung. */
 .calculation-choice:focused {
-    -fx-border-color: #7ed3ff;
+    -fx-border-color: #7fb2e5;
     -fx-border-width: 2.4;
 }
 
-/* Geplante Bereiche: Kabel und eigenstandige Aufwandsschatzung. */
 .calculation-choice:disabled {
     -fx-opacity: 1;
     -fx-background-color: #e5ebf2;
     -fx-border-color: #d3dce6;
-    -fx-text-fill: #8b98a8;
+    -fx-text-fill: -c-text-disabled;
     -fx-effect: null;
     -fx-cursor: default;
 }
 
 .calculation-choice:disabled .calculation-choice-icon {
-    -fx-stroke: #8b98a8;
+    -fx-stroke: -c-text-disabled;
 }
+
+
+/* ============================================================
+   12. PROJEKT BEARBEITEN
+   ============================================================ */
+
+.project-edit-scroll,
+.project-edit-scroll > .viewport,
+.project-edit-body {
+    -fx-background-color: -c-surface;
+}
+
+.project-edit-scroll {
+    -fx-border-color: -c-border;
+    -fx-border-radius: 0 12 12 12;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.project-edit .text-field,
+.project-edit .combo-box,
+.project-edit .date-picker {
+    -fx-pref-height: 34;
+}
+
+.project-edit-error {
+    -fx-text-fill: -c-danger;
+    -fx-font-size: 12px;
+}
+
+
+/* ============================================================
+   13. DIAGRAMME, PROGRESSBAR, TOOLTIP
+   Serienfarben: 0 = Hauptwert, 1 = Vergleich, 2 = Akzent, 3 = Referenz
+   ============================================================ */
+
+.chart {
+    -fx-padding: 12;
+}
+
+.chart-title {
+    -fx-text-fill: -c-text;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.chart-plot-background {
+    -fx-background-color: -c-surface;
+}
+
+.chart-vertical-grid-lines,
+.chart-horizontal-grid-lines {
+    -fx-stroke: #eef2f6;
+}
+
+.chart-alternative-row-fill,
+.chart-alternative-column-fill {
+    -fx-fill: transparent;
+    -fx-stroke: transparent;
+}
+
+.chart-vertical-zero-line,
+.chart-horizontal-zero-line {
+    -fx-stroke: -c-border-strong;
+}
+
+.axis {
+    -fx-tick-label-fill: -c-text-muted;
+    -fx-tick-mark-visible: false;
+}
+
+.axis-label {
+    -fx-text-fill: -c-text-muted;
+}
+
+.chart-legend {
+    -fx-background-color: transparent;
+    -fx-padding: 6;
+}
+
+.chart-legend-item {
+    -fx-text-fill: -c-text-body;
+}
+
+/* Balken */
+.default-color0.chart-bar { -fx-bar-fill: -c-primary;  -fx-background-radius: 4 4 0 0; }
+.default-color1.chart-bar { -fx-bar-fill: #8fb7df;     -fx-background-radius: 4 4 0 0; }
+.default-color2.chart-bar { -fx-bar-fill: -c-accent;   -fx-background-radius: 4 4 0 0; }
+.default-color3.chart-bar { -fx-bar-fill: #a9b6c4;     -fx-background-radius: 4 4 0 0; }
+
+/* Linien */
+.default-color0.chart-series-line { -fx-stroke: -c-primary; -fx-stroke-width: 2.5; }
+.default-color1.chart-series-line { -fx-stroke: #8fb7df;    -fx-stroke-width: 2.5; }
+.default-color2.chart-series-line { -fx-stroke: -c-accent;  -fx-stroke-width: 2.5; }
+.default-color3.chart-series-line { -fx-stroke: #a9b6c4;    -fx-stroke-width: 2.5; }
+
+/* Punkte (Linien- und Streudiagramm) */
+.default-color0.chart-line-symbol { -fx-background-color: -c-primary, white; }
+.default-color1.chart-line-symbol { -fx-background-color: #8fb7df, white; }
+.default-color2.chart-line-symbol { -fx-background-color: -c-accent, white; }
+.default-color3.chart-line-symbol { -fx-background-color: #a9b6c4, white; }
+
+/* Kreis */
+.default-color0.chart-pie { -fx-pie-color: -c-primary; }
+.default-color1.chart-pie { -fx-pie-color: #8fb7df; }
+.default-color2.chart-pie { -fx-pie-color: -c-accent; }
+.default-color3.chart-pie { -fx-pie-color: #a9b6c4; }
+
+/* ProgressBar (z. B. Gewichtung der Bezugsgrößen) */
+.progress-bar > .track {
+    -fx-background-color: #e6edf5;
+    -fx-background-radius: 8;
+    -fx-background-insets: 0;
+}
+
+.progress-bar > .bar {
+    -fx-background-color: -c-primary;
+    -fx-background-radius: 8;
+    -fx-background-insets: 0;
+    -fx-padding: 4;
+}
+
+/* Tooltip (Popup: feste Farben) */
+.tooltip {
+    -fx-background-color: #16324f;
+    -fx-background-radius: 8;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-padding: 6 10;
+}
+
+
+/* ============================================================
+   14. SIDEBAR-SCHALTER (Topbar)
+   ============================================================ */
+
+.menu-toggle {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-padding: 2 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.menu-toggle:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+}
+
+
+/* ============================================================
+   15. KLAPPBEREICHE (TitledPane)
+   z. B. "Zusätzlicher Methodenvergleich", "Vergleich mit Schiffstyp"
+   ============================================================ */
+
+.titled-pane {
+    -fx-text-fill: -c-text;
+    -fx-font-weight: bold;
+}
+
+.titled-pane > .title {
+    -fx-background-color: -c-surface;
+    -fx-border-color: -c-border;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-padding: 10 14;
+    -fx-cursor: hand;
+}
+
+.titled-pane > .title:hover {
+    -fx-background-color: -c-primary-soft;
+}
+
+.titled-pane:expanded > .title {
+    -fx-background-radius: 12 12 0 0;
+    -fx-border-radius: 12 12 0 0;
+}
+
+.titled-pane > .title > .arrow-button > .arrow {
+    -fx-background-color: -c-primary;
+}
+
+.titled-pane > .content {
+    -fx-background-color: -c-surface;
+    -fx-border-color: -c-border;
+    -fx-border-width: 0 1 1 1;
+    -fx-background-radius: 0 0 12 12;
+    -fx-border-radius: 0 0 12 12;
+    -fx-padding: 14;
+}
+
+
+/* Brennstellen-Aufteilung */
+.split-card { -fx-padding: 14 0 0 0; }
+
+.split-badge {
+    -fx-background-color: #fff4d6;
+    -fx-text-fill: #8a6100;
+    -fx-font-size: 10px;
+    -fx-padding: 3 8;
+    -fx-background-radius: 10;
+}
+
+.split-tile {
+    -fx-background-color: -c-surface-alt;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-width: 3 0 0 0;
+    -fx-padding: 12 14;
+}
+.split-tile.indoor  { -fx-border-color: -c-primary transparent transparent transparent; }
+.split-tile.outdoor { -fx-border-color: #8fb7df transparent transparent transparent; }
+.split-tile.switch  { -fx-border-color: #a9b6c4 transparent transparent transparent; }
+
+.split-tile-caption { -fx-text-fill: -c-text-muted; -fx-font-size: 12px; }
+.split-tile-value   { -fx-text-fill: -c-text; -fx-font-size: 22px; -fx-font-weight: bold; }
+.split-tile-share   { -fx-text-fill: -c-text-muted; -fx-font-size: 13px; }
+
+.split-bar {
+    -fx-background-color: #eef2f6;
+    -fx-background-radius: 5;
+}
+.split-bar-segment.indoor  { -fx-background-color: -c-primary; -fx-background-radius: 5 0 0 5; }
+.split-bar-segment.outdoor { -fx-background-color: #8fb7df; }
+.split-bar-segment.switch  { -fx-background-color: #a9b6c4; -fx-background-radius: 0 5 5 0; }

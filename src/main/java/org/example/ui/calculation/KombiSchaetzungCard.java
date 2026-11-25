@@ -1,9 +1,9 @@
 package org.example.ui.calculation;
 
 import org.example.model.MatrixProjekt;
+import org.example.repository.LightingSplitRepository;
 import org.example.repository.MatrixRepository;
 import org.example.calculation.RegressionRechenweg;
-import org.example.ui.calculation.SchaetzungsVergleich;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -142,6 +142,13 @@ public class KombiSchaetzungCard extends VBox {
     private final TableView<Aehnlich> aehnlichTabelle = new TableView<>();
     private final Label aehnlichHinweis = new Label();
 
+    // NEU: Aufteilung Innen / Außen / Schalter-Steckdosen
+    private final LightingSplitCard splitCard =
+            new LightingSplitCard(new LightingSplitRepository());
+    private String filterKategorie;
+    private String filterSchiffstyp;
+    private boolean filterNurRelevant;
+
     public KombiSchaetzungCard() {
         setSpacing(16);
         setMinWidth(0);
@@ -278,6 +285,7 @@ public class KombiSchaetzungCard extends VBox {
                 prognoseKopf,
                 beschreibung("Gewichtetes Ergebnis der verwendbaren Bezugsgrößen."),
                 ergebnisFeld,
+                splitCard,                                   // NEU
                 abschnitt("Gewichtung der Bezugsgrößen"),
                 gewichtUebersicht
         );
@@ -342,6 +350,11 @@ public class KombiSchaetzungCard extends VBox {
 
     /** Wie KorrelationsMatrixCard.setFilter: null = alle. */
     public void setFilter(String kategorie, String schiffstyp, boolean nurRelevant) {
+        // NEU: Filter merken, damit die Aufteilung dieselben Projekte nutzt
+        this.filterKategorie = kategorie;
+        this.filterSchiffstyp = schiffstyp;
+        this.filterNurRelevant = nurRelevant;
+
         try {
             projekte = repository.lade(kategorie, schiffstyp, nurRelevant);
         } catch (RuntimeException e) {
@@ -429,6 +442,18 @@ public class KombiSchaetzungCard extends VBox {
                         + " bis " + ZAHL.format(Math.round(max)) + ".";
             }
             ergebnisHinweis.setText(text);
+        }
+
+        // NEU: Aufteilung Innen / Außen / Schalter-Steckdosen aktualisieren
+        try {
+            splitCard.update(
+                    verwendet > 0 ? kombiniert : null,
+                    filterKategorie,
+                    filterSchiffstyp,
+                    filterNurRelevant
+            );
+        } catch (RuntimeException e) {
+            System.err.println("Aufteilung konnte nicht berechnet werden: " + e.getMessage());
         }
 
         pruefung.setText(pruefText(formeln, roh));

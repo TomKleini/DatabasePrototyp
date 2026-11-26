@@ -17,6 +17,7 @@ import java.util.List;
  *   Zusammenfassung    Eingaben, geschätzte Brennstellen, Aufteilung (historische Anteile)
  *   Berechnung         Formeln, Fehler, Gewichte, Prüfung, Rechenweg der Aufteilung
  *   Ähnliche Schiffe   die ähnlichsten Referenzschiffe zu den eingegebenen Werten
+ *   Referenzprojekte   alle Schiffe der aktuellen Filter und wofür sie gezählt wurden
  */
 public final class EstimateReport {
 
@@ -80,6 +81,27 @@ public final class EstimateReport {
     }
 
     /**
+     * Ein Referenzprojekt der aktuellen Filter.
+     *
+     * @param sizeValues     Werte in der Reihenfolge von Input.sizes(), null = unbekannt
+     * @param lightingPoints Brennstellen nach der gewählten Basis, null = keine
+     * @param source         "Ist" oder "Soll" dazu, leer ohne Brennstellen
+     * @param indoor         Innenbeleuchtung (Soll), null = unbekannt
+     * @param outdoor        Außenbeleuchtung (Soll), null = unbekannt
+     * @param switchSocket   Schalter/Steckdosen (Soll), null = unbekannt
+     */
+    public record Project(
+            String ship,
+            List<Double> sizeValues,
+            Double lightingPoints,
+            String source,
+            Double indoor,
+            Double outdoor,
+            Double switchSocket
+    ) {
+    }
+
+    /**
      * @param category        null = alle Kategorien
      * @param shipType        null = alle Schiffstypen
      * @param total           geschätzte Brennstellen gesamt
@@ -89,7 +111,7 @@ public final class EstimateReport {
      * @param similarSizes    Spaltennamen der verglichenen Bezugsgrößen, z. B. "Volumen (GT)"
      * @param similar         die angezeigten ähnlichsten Schiffe
      * @param similarNote     Hinweistext unter der Tabelle der Oberfläche
-     * @param referenceCount  Anzahl aller Referenzprojekte in den aktuellen Filtern
+     * @param projects        alle Referenzprojekte der aktuellen Filter
      */
     public record Input(
             LocalDateTime created,
@@ -107,7 +129,7 @@ public final class EstimateReport {
             List<String> similarSizes,
             List<Similar> similar,
             String similarNote,
-            int referenceCount
+            List<Project> projects
     ) {
     }
 
@@ -155,7 +177,7 @@ public final class EstimateReport {
     }
 
     public static List<Sheet> build(Input in) {
-        return List.of(summary(in), calculation(in), similar(in));
+        return List.of(summary(in), calculation(in), similar(in), projects(in));
     }
 
     // ------------------------------------------------------------------
@@ -189,7 +211,7 @@ public final class EstimateReport {
         rows.add(Cell.of("Nur auswertungsrelevante Projekte", Style.LABEL),
                 Cell.of(in.onlyRelevant() ? "Ja" : "Nein", Style.TEXT));
         rows.add(Cell.of("Referenzprojekte (Anzahl)", Style.LABEL),
-                Cell.of(in.referenceCount(), Style.INTEGER));
+                Cell.of(in.projects().size(), Style.INTEGER));
         rows.blank();
 
         rows.add(Cell.spanning("Ergebnis", Style.HEADING, SUMMARY_COLUMNS));
@@ -237,7 +259,8 @@ public final class EstimateReport {
             }
         }
         rows.note("Rechenweg: siehe Blatt \"Berechnung\". Die ähnlichsten Schiffe: "
-                + "siehe Blatt \"Ähnliche Schiffe\".", SUMMARY_COLUMNS);
+                + "siehe Blatt \"Ähnliche Schiffe\". Alle verwendeten Schiffe: "
+                + "siehe Blatt \"Referenzprojekte\".", SUMMARY_COLUMNS);
 
         return new Sheet("Zusammenfassung", widths, rows.list(), 0, -1);
     }
@@ -389,6 +412,87 @@ public final class EstimateReport {
 
     private static Double at(List<Double> list, int index) {
         return list != null && index < list.size() ? list.get(index) : null;
+    }
+
+    // ------------------------------------------------------------------
+    // Blatt 4: Referenzprojekte
+    // ------------------------------------------------------------------
+
+    private static Sheet projects(Input in) {
+        int sizeCount = in.sizes().size();
+
+        List<Integer> widths = new ArrayList<>();
+        widths.add(32);                             // Schiff
+        for (int i = 0; i < sizeCount; i++) {
+            widths.add(17);                         // Bezugsgrößen
+        }
+        widths.add(14);                             // Brennstellen
+        widths.add(9);                              // Quelle
+        widths.add(12);                             // Innen
+        widths.add(12);                             // Außen
+        widths.add(16);                             // Schalter/Steckdosen
+        widths.add(34);                             // In Gesamtschätzung
+        int columns = widths.size();
+
+        Rows rows = new Rows(widths);
+        rows.add(Cell.spanning("Referenzprojekte (" + in.projects().size() + ")",
+                Style.TITLE, columns));
+        rows.note("Alle Schiffe der aktuellen Filter. \"In Gesamtschätzung\" nennt die "
+                        + "angehakten Bezugsgrößen, für die das Schiff in die Formel eingeflossen "
+                        + "ist (Brennstellen und Wert der Bezugsgröße vorhanden). Brennstellen "
+                        + "stehen nach der gewählten Basis (Quelle Ist oder Soll). Innen, Außen "
+                        + "und Schalter/Steckdosen sind Soll-Werte, die Aufteilung der "
+                        + "Brennstellen nutzt nur Schiffe, bei denen alle drei vorhanden sind.",
+                columns);
+
+        List<String> head = new ArrayList<>();
+        head.add("Schiff");
+        for (Size size : in.sizes()) {
+            head.add(size.name() + " (" + size.unit() + ")");
+        }
+        head.add("Brennstellen");
+        head.add("Quelle");
+        head.add("Innen");
+        head.add("Außen");
+        head.add("Schalter/ Steckdosen");
+        head.add("In Gesamtschätzung");
+        int headerRow = rows.list().size();
+        rows.add(header(head.toArray(new String[0])));
+
+        for (Project p : in.projects()) {
+            List<Cell> cells = new ArrayList<>();
+            cells.add(Cell.of(p.ship(), Style.TEXT));
+            for (int i = 0; i < sizeCount; i++) {
+                cells.add(Cell.of(at(p.sizeValues(), i), Style.NUMBER));
+            }
+            cells.add(Cell.of(p.lightingPoints(), Style.NUMBER));
+            cells.add(Cell.of(p.lightingPoints() == null ? "" : p.source(), Style.TEXT));
+            cells.add(Cell.of(p.indoor(), Style.NUMBER));
+            cells.add(Cell.of(p.outdoor(), Style.NUMBER));
+            cells.add(Cell.of(p.switchSocket(), Style.NUMBER));
+            cells.add(Cell.of(usedForTotal(in, p), Style.TEXT));
+            rows.add(cells);
+        }
+        if (in.projects().isEmpty()) {
+            rows.note("Keine Referenzprojekte für diese Filter.", columns);
+        }
+
+        return new Sheet("Referenzprojekte", widths, rows.list(), headerRow + 1, headerRow);
+    }
+
+    private static String usedForTotal(Input in, Project p) {
+        if (p.lightingPoints() == null) {
+            return "Nein (keine Brennstellen)";
+        }
+        List<String> names = new ArrayList<>();
+        for (int i = 0; i < in.sizes().size(); i++) {
+            Size size = in.sizes().get(i);
+            Double x = at(p.sizeValues(), i);
+            if (size.used() && x != null && x > 0) {
+                names.add(size.name());
+            }
+        }
+        return names.isEmpty() ? "Nein" : String.join(", ", names);
     }
 
     // ------------------------------------------------------------------

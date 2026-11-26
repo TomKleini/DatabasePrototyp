@@ -1060,6 +1060,23 @@ public class KombiSchaetzungCard extends VBox {
                     a.aehnlichkeit(), a.brennstellen(), a.quelle(), a.hochgerechnet()));
         }
 
+        List<EstimateReport.Project> referenzen = new ArrayList<>();
+        for (MatrixProjekt p : projekte) {
+            List<Double> groessenWerte = new ArrayList<>();
+            for (Bezug b : BEZUEGE) {
+                groessenWerte.add(p.wert(b.schluessel()));
+            }
+            Double punkte = brennstellen(p);
+            String quelle = punkte == null ? ""
+                    : basisAuswahl.getValue() == Basis.SOLL ? "Soll"
+                    : p.wert("LIGHTING_POINTS:ist") != null ? "Ist" : "Soll";
+            referenzen.add(new EstimateReport.Project(
+                    p.schiff(), groessenWerte, punkte, quelle,
+                    p.wert("LIGHTING_INDOOR:soll"),
+                    p.wert("LIGHTING_OUTDOOR:soll"),
+                    p.wert("LIGHTING_SWITCH_SOCKET:soll")));
+        }
+
         return new EstimateReport.Input(
                 zeit, kategorie, schiffstyp, filterNurRelevant,
                 basisAuswahl.getValue().toString(),
@@ -1067,7 +1084,7 @@ public class KombiSchaetzungCard extends VBox {
                 methoden, pruefung.getText(),
                 aufteilung, aufteilungSchiffe,
                 aehnlichSpalten, aehnliche, aehnlichHinweis.getText(),
-                projekte.size());
+                referenzen);
     }
 
 

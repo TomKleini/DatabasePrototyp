@@ -1,7 +1,9 @@
 package org.example.ui.calculation;
 
+import javafx.animation.FadeTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
@@ -13,18 +15,21 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.SVGPath;
+import javafx.util.Duration;
 import org.example.repository.KpiRepository;
 
 import java.util.Objects;
 
-/** Einstieg in die Kalkulation. Die bisherige Beleuchtungsseite bleibt erhalten. */
+/** Einstieg in die Kalkulation: Beleuchtung und Kabel. */
 public class KalkulationAuswahlView extends BorderPane {
 
     private final KpiRepository repository;
     private final ScrollPane auswahl;
-    private final HBox beleuchtungNavigation;
+    private final HBox bereichNavigation;
+    private final Label breadcrumb = new Label();
     private final Label fehler = new Label();
     private KalkulationView beleuchtungView;
+    private KabelKalkulationView kabelView;
 
     public KalkulationAuswahlView(KpiRepository repository) {
         this.repository = Objects.requireNonNull(repository);
@@ -39,8 +44,11 @@ public class KalkulationAuswahlView extends BorderPane {
         Button lighting = choice("Beleuchtung", "lighting", true);
         lighting.setId("calculation-lighting-open");
         lighting.setOnAction(event -> showLighting());
-        Button cable = choice("Kabel", "cable", false);
-        cable.setId("calculation-cable-card");
+
+        Button cable = choice("Kabel", "cable", true);
+        cable.setId("calculation-cable-open");
+        cable.setOnAction(event -> showCable());
+
         Button effort = choice("Aufwandsschätzung", "effort", false);
         effort.setId("calculation-effort-card");
 
@@ -72,23 +80,20 @@ public class KalkulationAuswahlView extends BorderPane {
         back.setId("calculation-back");
         back.getStyleClass().add("calculation-back-button");
         back.setOnAction(event -> showStart());
-        Label breadcrumb = new Label("Kalkulation / Beleuchtung");
         breadcrumb.getStyleClass().add("calculation-breadcrumb");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        beleuchtungNavigation = new HBox(12, back, spacer, breadcrumb);
-        beleuchtungNavigation.setAlignment(Pos.CENTER_LEFT);
-        beleuchtungNavigation.setPadding(new Insets(14, 28, 0, 28));
+        bereichNavigation = new HBox(12, back, spacer, breadcrumb);
+        bereichNavigation.setAlignment(Pos.CENTER_LEFT);
+        bereichNavigation.setPadding(new Insets(14, 28, 0, 28));
         showStart();
     }
 
     /** Aufruf beim Klick auf „Kalkulation“ in der Hauptnavigation. */
     public void showStart() {
-        fehler.setText("");
-        fehler.setVisible(false);
-        fehler.setManaged(false);
+        versteckeFehler();
         setTop(null);
-        setCenter(auswahl);
+        zeige(auswahl);
     }
 
     private void showLighting() {
@@ -97,21 +102,61 @@ public class KalkulationAuswahlView extends BorderPane {
                 // Erst beim Öffnen erzeugen: Auswahlseite braucht keinen Datenbankzugriff.
                 beleuchtungView = new KalkulationView(repository);
             } else {
-                // Dasselbe Objekt behalten: Eingaben und ausgewählter Reiter bleiben erhalten.
+                // Dasselbe Objekt behalten: Eingaben und Reiter bleiben erhalten.
                 beleuchtungView.reload();
             }
-            fehler.setVisible(false);
-            fehler.setManaged(false);
-            setTop(beleuchtungNavigation);
-            setCenter(beleuchtungView);
+            oeffneBereich("Kalkulation / Beleuchtung", beleuchtungView);
         } catch (RuntimeException exception) {
-            exception.printStackTrace();
-            showStart();
-            fehler.setText("Die Beleuchtungsdaten konnten nicht geladen werden. "
-                    + "Bitte Datenbankverbindung prüfen und erneut öffnen.");
-            fehler.setVisible(true);
-            fehler.setManaged(true);
+            zeigeFehler("Die Beleuchtungsdaten konnten nicht geladen werden. "
+                    + "Bitte Datenbankverbindung prüfen und erneut öffnen.", exception);
         }
+    }
+
+    private void showCable() {
+        try {
+            if (kabelView == null) {
+                kabelView = new KabelKalkulationView();
+            } else {
+                kabelView.reload();
+            }
+            oeffneBereich("Kalkulation / Kabel", kabelView);
+        } catch (RuntimeException exception) {
+            zeigeFehler("Die Kabeldaten konnten nicht geladen werden. "
+                    + "Bitte Datenbankverbindung prüfen und erneut öffnen.", exception);
+        }
+    }
+
+    private void oeffneBereich(String pfad, Node view) {
+        versteckeFehler();
+        breadcrumb.setText(pfad);
+        setTop(bereichNavigation);
+        zeige(view);
+    }
+
+    /** Kurzes Einblenden beim Wechsel (200 ms, keine Dauerlast). */
+    private void zeige(Node view) {
+        if (getCenter() == view) {
+            return;
+        }
+        view.setOpacity(0);
+        setCenter(view);
+        FadeTransition fade = new FadeTransition(Duration.millis(200), view);
+        fade.setToValue(1);
+        fade.play();
+    }
+
+    private void zeigeFehler(String text, RuntimeException exception) {
+        exception.printStackTrace();
+        showStart();
+        fehler.setText(text);
+        fehler.setVisible(true);
+        fehler.setManaged(true);
+    }
+
+    private void versteckeFehler() {
+        fehler.setText("");
+        fehler.setVisible(false);
+        fehler.setManaged(false);
     }
 
     private Button choice(String title, String icon, boolean available) {
@@ -157,6 +202,4 @@ public class KalkulationAuswahlView extends BorderPane {
         box.setMouseTransparent(true);
         return box;
     }
-
-
 }

@@ -40,6 +40,18 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import javafx.scene.control.Alert;
+import javafx.stage.FileChooser;
+import org.example.calculation.LightingSplitCalculator;
+import org.example.export.EstimateExcelWriter;
+import org.example.export.EstimateReport;
+import org.example.repository.LightingSplitRepository.Reference;
+
+
 public class KombiSchaetzungCard extends VBox {
 
     private static final DecimalFormat ZAHL = format("#,##0.##");
@@ -148,6 +160,10 @@ public class KombiSchaetzungCard extends VBox {
     private String filterKategorie;
     private String filterSchiffstyp;
     private boolean filterNurRelevant;
+
+    private final Button exportButton = new Button("Als Excel exportieren");
+    private final Label exportStatus = new Label();
+    private Double letzteSchaetzung;
 
     public KombiSchaetzungCard() {
         setSpacing(16);
@@ -280,12 +296,23 @@ public class KombiSchaetzungCard extends VBox {
         );
         prognoseKopf.setAlignment(Pos.CENTER_LEFT);
 
+        exportButton.setId("estimate-export");
+        exportButton.getStyleClass().add("primary-button");
+        exportButton.setDisable(true);
+        exportButton.setOnAction(event -> exportiere());
+        exportStatus.setWrapText(true);
+        exportStatus.setMinWidth(0);
+        exportStatus.getStyleClass().add("estimate-description");
+        VBox exportZeile = new VBox(6, exportButton, exportStatus);
+        exportZeile.setMinWidth(0);
+
         VBox prognoseKarte = new VBox(
                 12,
                 prognoseKopf,
                 beschreibung("Gewichtetes Ergebnis der verwendbaren Bezugsgrößen."),
                 ergebnisFeld,
-                splitCard,                                   // NEU
+                splitCard,
+                exportZeile,
                 abschnitt("Gewichtung der Bezugsgrößen"),
                 gewichtUebersicht
         );
@@ -443,6 +470,9 @@ public class KombiSchaetzungCard extends VBox {
             }
             ergebnisHinweis.setText(text);
         }
+
+        letzteSchaetzung = verwendet > 0 ? kombiniert : null;
+        exportButton.setDisable(verwendet == 0);
 
         // NEU: Aufteilung Innen / Außen / Schalter-Steckdosen aktualisieren
         try {
@@ -800,6 +830,8 @@ public class KombiSchaetzungCard extends VBox {
             return null;
         }
 
+
+
         String s = text.trim().replace(" ", "");
         if (s.contains(",")) {
             s = s.replace(".", "").replace(',', '.');
@@ -814,6 +846,8 @@ public class KombiSchaetzungCard extends VBox {
             return null;
         }
     }
+
+
 
     /** Zeigt nur bereits berechnete Werte der vorhandenen Methodentabelle. */
     private void zeigeGewichte() {
@@ -943,5 +977,106 @@ public class KombiSchaetzungCard extends VBox {
 
     private static DecimalFormat format(String muster) {
         return new DecimalFormat(muster, DecimalFormatSymbols.getInstance(Locale.GERMANY));
+    }
+
+    private void exportiere() {
+        if (letzteSchaetzung == null) {
+            exportStatus.setText("Noch keine Schätzung vorhanden.");
+            return;
+        }
+        LocalDateTime jetzt = LocalDateTime.now();
+
+        FileChooser dialog = new FileChooser();
+        dialog.setTitle("Schätzung als Excel speichern");
+        dialog.setInitialFileName(EstimateReport.defaultFileName(jetzt));
+        dialog.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Excel-Datei (*.xlsx)", "*.xlsx"));
+        File datei = dialog.showSaveDialog(
+                getScene() == null ? null : getScene().getWindow());
+        if (datei == null) {
+            return;
+        }
+
+        Path ziel = datei.toPath();
+        if (!ziel.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            ziel = ziel.resolveSibling(ziel.getFileName() + ".xlsx");
+        }
+
+        try {
+            EstimateExcelWriter.write(EstimateReport.build(sammleExport(jetzt)), ziel);
+            exportStatus.setText("Gespeichert: " + ziel);
+        } catch (IOException | RuntimeException e) {
+            exportStatus.setText("Export fehlgeschlagen.");
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "Die Datei konnte nicht gespeichert werden. "
+                            + "Ist sie in Excel geöffnet?\n\n" + e.getMessage());
+            alert.setHeaderText("Export fehlgeschlagen");
+            alert.showAndWait();
+        }
+    }
+
+    private EstimateReport.Input sammleExport(LocalDateTime zeit) {
+        List<EstimateReport.Size> groessen = new ArrayList<>();
+        for (Bezug b : BEZUEGE) {
+            groessen.add(new EstimateReport.Size(
+                    b.name(), b.einheit(), auswahl.get(b).isSelected(), eingabe(b)));
+        }
+
+        List<EstimateReport.Method> methoden = new ArrayList<>();
+        for (Zeile z : tabelle.getItems()) {
+            RegressionRechenweg.Fehlerkennzahlen k = z.kennzahlen();
+            methoden.add(new EstimateReport.Method(
+                    z.bezug(), z.n(), z.methode(), z.formel(),
+                    z.fehler(), k == null ? null : k.mdape(), k == null ? null : k.mae(),
+                    z.eingabe(), z.schaetzung(), z.gewicht(), z.beitrag(), z.summe()));
+        }
+
+        String kategorie = normalisiere(filterKategorie);
+        String schiffstyp = normalisiere(filterSchiffstyp);
+        List<Reference> refs = new LightingSplitRepository()
+                .findReferences(kategorie, schiffstyp, filterNurRelevant);
+        LightingSplitCalculator.Result aufteilung = letzteSchaetzung == null
+                ? null
+                : LightingSplitCalculator.calculate(letzteSchaetzung, refs);
+        List<String> aufteilungSchiffe = refs.stream().map(Reference::shipName).toList();
+
+        List<Bezug> genutzt = BEZUEGE.stream()
+                .filter(b -> auswahl.get(b).isSelected() && eingabe(b) != null)
+                .toList();
+        List<String> aehnlichSpalten = new ArrayList<>();
+        for (Bezug b : genutzt) {
+            aehnlichSpalten.add(b.name() + " (" + b.einheit() + ")");
+        }
+        List<EstimateReport.Similar> aehnliche = new ArrayList<>();
+        for (Aehnlich a : aehnlichTabelle.getItems()) {
+            List<Double> werte = new ArrayList<>();
+            List<Double> abweichungen = new ArrayList<>();
+            for (Bezug b : genutzt) {
+                werte.add(a.werte().get(b));
+                abweichungen.add(a.abweichung().get(b));
+            }
+            aehnliche.add(new EstimateReport.Similar(
+                    a.rang(), a.schiff(), werte, abweichungen, a.verglichen(),
+                    a.aehnlichkeit(), a.brennstellen(), a.quelle(), a.hochgerechnet()));
+        }
+
+        return new EstimateReport.Input(
+                zeit, kategorie, schiffstyp, filterNurRelevant,
+                basisAuswahl.getValue().toString(),
+                groessen, letzteSchaetzung, ergebnisHinweis.getText(),
+                methoden, pruefung.getText(),
+                aufteilung, aufteilungSchiffe,
+                aehnlichSpalten, aehnliche, aehnlichHinweis.getText(),
+                projekte.size());
+    }
+
+
+
+    private static String normalisiere(String wert) {
+        if (wert == null || wert.isBlank()
+                || wert.trim().toLowerCase(Locale.GERMAN).startsWith("alle")) {
+            return null;
+        }
+        return wert.trim();
     }
 }

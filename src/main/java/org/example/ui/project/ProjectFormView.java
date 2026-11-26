@@ -292,30 +292,12 @@ public class ProjectFormView extends BorderPane {
     }
 
     private Double optionalNumber(TextField field, String label) {
-        String input = field.getText().trim();
-
-        if (input.isEmpty()) {
-            return null;
-        }
-
         try {
-            double value = Double.parseDouble(
-                    input.replace(",", ".")
-            );
-
-            if (!Double.isFinite(value) || value < 0) {
-                throw new NumberFormatException();
-            }
-
-            return value;
-
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException(
-                    label + ": Bitte eine Zahl ab 0 eingeben."
-            );
+            return ProjectEditView.parseNumber(field.getText());
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException(label + ": " + exception.getMessage());
         }
     }
-
     public void setOnCancel(Runnable onCancel) {
         this.onCancel = onCancel;
     }

@@ -65,7 +65,6 @@ public class LightingSplitRepository {
                 """;
 
         List<Reference> references = new ArrayList<>();
-
         try (
                 Connection connection = Database.connect();
                 PreparedStatement statement = connection.prepareStatement(sql)
@@ -90,7 +89,6 @@ public class LightingSplitRepository {
             throw new RuntimeException(
                     "Brennstellen-Aufteilung konnte nicht geladen werden", e);
         }
-
         return references;
     }
 

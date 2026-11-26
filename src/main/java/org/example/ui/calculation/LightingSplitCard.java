@@ -96,6 +96,7 @@ public class LightingSplitCard extends VBox {
         basis.setMinWidth(0);
 
         getChildren().addAll(titleRow, tiles, bar, basis);
+
         showEmpty("Noch keine Schätzung berechnet.");
     }
 
@@ -120,7 +121,6 @@ public class LightingSplitCard extends VBox {
         );
 
         Result result = LightingSplitCalculator.calculate(estimatedTotal, refs);
-
         if (result == null) {
             showEmpty("Keine Referenzprojekte mit vollständiger Aufteilung "
                     + "(Innen, Außen, Schalter/Steckdosen) für diese Filter.");
@@ -130,7 +130,6 @@ public class LightingSplitCard extends VBox {
         indoorValue.setText(integerFormat.format(result.indoor()));
         outdoorValue.setText(integerFormat.format(result.outdoor()));
         switchValue.setText(integerFormat.format(result.switchSocket()));
-
         indoorShare.setText(percent(result.indoorShare()));
         outdoorShare.setText(percent(result.outdoorShare()));
         switchShare.setText(percent(result.switchSocketShare()));
